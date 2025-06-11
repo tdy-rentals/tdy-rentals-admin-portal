@@ -478,16 +478,62 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
     
     try {
       if (typeof dateValue === 'number') {
+        // Excel date serial number conversion
         const excelEpoch = new Date(1900, 0, 1);
         const jsDate = new Date(excelEpoch.getTime() + (dateValue - 2) * 24 * 60 * 60 * 1000);
         return jsDate.toISOString();
       }
       
       if (typeof dateValue === 'string') {
+        // Check if it's a string representation of a number (Excel serial)
+        const numValue = parseFloat(dateValue);
+        if (!isNaN(numValue) && numValue > 1000) {
+          // Treat as Excel serial number
+          const excelEpoch = new Date(1900, 0, 1);
+          const jsDate = new Date(excelEpoch.getTime() + (numValue - 2) * 24 * 60 * 60 * 1000);
+          return jsDate.toISOString();
+        }
+        
+        // Try to parse as regular date string
         const parsedDate = new Date(dateValue);
         if (!isNaN(parsedDate.getTime())) {
           return parsedDate.toISOString();
         }
+      }
+      
+      return dateValue.toString();
+    } catch {
+      return dateValue?.toString() || '';
+    }
+  };
+
+  // Helper function to convert Excel date serial number to readable month/year
+  const formatExcelDateToMonth = (dateValue: any): string => {
+    if (!dateValue) return '';
+    
+    try {
+      if (typeof dateValue === 'number') {
+        // Excel date serial number conversion
+        const excelEpoch = new Date(1900, 0, 1);
+        const jsDate = new Date(excelEpoch.getTime() + (dateValue - 2) * 24 * 60 * 60 * 1000);
+        
+        // Format as "MMM YYYY" (e.g., "Jan 2024")
+        return jsDate.toLocaleDateString('en-US', { 
+          month: 'short', 
+          year: 'numeric' 
+        });
+      }
+      
+      if (typeof dateValue === 'string') {
+        const parsedDate = new Date(dateValue);
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate.toLocaleDateString('en-US', { 
+            month: 'short', 
+            year: 'numeric' 
+          });
+        }
+        // If it's already a readable string, return as is
+        return dateValue;
       }
       
       return dateValue.toString();
@@ -939,106 +985,45 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
     return client;
   };
 
-  // Parse master accounting file (adapted from MasterAccountingParser)
-  const parseMasterAccounting = (rows: any[][]): Client[] => {
+  // Helper function to clean Excel error values
+  const cleanExcelValue = (value: any): string => {
+    if (!value) return '';
+    const strValue = value.toString().trim();
+    return (strValue === '#N/A' || strValue === '#REF!' || strValue === '#VALUE!' || strValue === '#DIV/0!') ? '' : strValue;
+  };
+
+  // Parse V2, V3, V4 files
+  const parseVersionFile = (rows: any[][], version: 'V2' | 'V3' | 'V4'): Client[] => {
     const clients: Client[] = [];
+    const mapping = CELL_MAPPING[version];
     
-    console.log('Starting Master Accounting parsing, total rows:', rows.length);
+    console.log(`Starting ${version} parsing, total rows:`, rows.length);
 
-    // First, find the header row with "First" and "Last" columns
-    let headerRowIndex = -1;
-    let firstNameColumnIndex = -1;
-    let lastNameColumnIndex = -1;
-
-    for (let i = 0; i < Math.min(50, rows.length); i++) {
+    // Find all client rows - they have "Last" and "First" in columns 4 and 5
+    const clientRows: number[] = [];
+    for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      if (!row) continue;
-
-      // Look for header row containing "First" and "Last"
-      const firstIndex = row.findIndex(cell => 
-        cell && typeof cell === 'string' && cell.toString().toLowerCase().includes('first')
-      );
-      const lastIndex = row.findIndex(cell => 
-        cell && typeof cell === 'string' && cell.toString().toLowerCase().includes('last')
-      );
-
-      if (firstIndex >= 0 && lastIndex >= 0) {
-        headerRowIndex = i;
-        firstNameColumnIndex = firstIndex;
-        lastNameColumnIndex = lastIndex;
-        console.log(`Found header row at index ${i}, First column: ${firstIndex}, Last column: ${lastIndex}`);
-        break;
+      if (row && row[4] === 'Last' && row[5] === 'First') {
+        clientRows.push(i);
       }
     }
-
-    // Extract monthly period headers from Row 13 (index 12), columns L-AU (indexes 11-46)
-    const monthlyHeaders: string[] = [];
-    if (rows[12]) { // Row 13 (0-indexed as 12)
-      for (let col = 11; col <= 46; col++) { // Columns L-AU (L=11, AU=46)
-        const header = rows[12][col]?.toString().trim() || '';
-        monthlyHeaders.push(header);
-      }
-    }
-    console.log('Monthly period headers found:', monthlyHeaders.filter(h => h.length > 0));
-
-    // Master Accounting clients start at row 46 (index 45) and consist of 8-row sections
-    const startRowIndex = 45; // Row 46 in 1-based indexing
-    const rowsPerClient = 8;
     
-    console.log(`Starting to parse Master Accounting clients from row ${startRowIndex + 1}`);
+    console.log(`Found ${clientRows.length} client rows at:`, clientRows.map(r => r + 1));
 
-    let clientNumber = 1;
-    let currentRowIndex = startRowIndex;
+    // Process each client row
+    clientRows.forEach((rowIndex, clientNumber) => {
+      const row = rows[rowIndex];
+      if (!row) return;
 
-    while (currentRowIndex + rowsPerClient <= rows.length) {
-      console.log(`Processing client section starting at row ${currentRowIndex + 1}`);
-      
-      // Extract the 8-row section for this client
-      const clientSection = [];
-      for (let i = 0; i < rowsPerClient; i++) {
-        if (rows[currentRowIndex + i]) {
-          clientSection.push(rows[currentRowIndex + i]);
-        }
-      }
+      console.log(`Processing client ${clientNumber + 1} at row ${rowIndex + 1}`);
 
-      if (clientSection.length === 0) {
-        console.log(`No data found in section starting at row ${currentRowIndex + 1}, skipping`);
-        currentRowIndex += rowsPerClient;
-        clientNumber++;
-        continue;
-      }
-
-      // Check if this section contains actual client data
-      // Look for any non-empty cells in columns B, C, or D
-      const hasData = clientSection.some(row => 
-        (row[1] && row[1].toString().trim()) || 
-        (row[2] && row[2].toString().trim()) || 
-        (row[3] && row[3].toString().trim())
-      );
-
-      if (!hasData) {
-        console.log(`Section starting at row ${currentRowIndex + 1} appears to be empty, skipping`);
-        currentRowIndex += rowsPerClient;
-        clientNumber++;
-        continue;
-      }
-
-      const masterAccountingData = {
-        label: '', // Will be extracted from column B for this client
-        salesNotes: '',
-        operationsNotes: '',
-        accountingNotes: '',
-        contractTaxRate: 0,
-        liquidationTaxRate: 0,
-        paymentType: '',
-        lastFourDigits: '',
-        lastName: '',
-        firstName: '',
-        billingAddress: '',
-        billingCity: '',
-        billingState: '',
-        billingZip: '',
-        paymentStatuses: [] as string[],
+      // Extract client data using the mapping
+      const clientData = {
+        label: row[mapping.clientNumber.col]?.toString().trim() || '',
+        operationsNotes: row[mapping.operationsNotes.col]?.toString().trim() || '',
+        salesNotes: row[mapping.salesNotes.col]?.toString().trim() || '',
+        contractTaxRate: parseFloat(row[mapping.contractTaxRate.col]) || 0,
+        liquidationTaxRate: parseFloat(row[mapping.liquidationTaxRate.col]) || 0,
         billing_details: {} as { [month: string]: {
           payment_status?: string;
           due_date?: string;
@@ -1051,154 +1036,178 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
         }}
       };
 
-      // Extract the label from column B (index 1) for this client
-      for (const row of clientSection) {
-        if (row && row[1] && row[1].toString().trim()) {
-          const labelValue = row[1].toString().trim();
-          // Only use non-empty, non-header values
-          if (labelValue && !isNaN(Number(labelValue))) {
-            masterAccountingData.label = labelValue;
-            break;
-          }
-        }
+      // Look for actual client data in the next row (names, addresses, etc.)
+      const dataRowIndex = rowIndex + 1;
+      let firstName = '';
+      let lastName = '';
+      
+      if (rows[dataRowIndex]) {
+        const dataRow = rows[dataRowIndex];
+        lastName = cleanExcelValue(dataRow[4]); // Column E
+        firstName = cleanExcelValue(dataRow[5]); // Column F
+        
+        console.log(`Client ${clientNumber + 1} names: ${firstName} ${lastName}`);
       }
 
-      // Extract names using column headers if found
-      if (headerRowIndex >= 0 && firstNameColumnIndex >= 0 && lastNameColumnIndex >= 0) {
-        // Look for names in any of the 8 rows for this client
-        for (const row of clientSection) {
-          if (row[firstNameColumnIndex] && row[lastNameColumnIndex]) {
-            const firstName = row[firstNameColumnIndex].toString().trim();
-            const lastName = row[lastNameColumnIndex].toString().trim();
-            
-            // Only use non-empty names that are not the header text itself
-            if (firstName && lastName && 
-                firstName.toLowerCase() !== 'first' && 
-                lastName.toLowerCase() !== 'last') {
-              masterAccountingData.firstName = firstName;
-              masterAccountingData.lastName = lastName;
-              console.log(`Found names for client ${clientNumber}: ${firstName} ${lastName}`);
-              break;
-            }
-          }
-        }
-      }
-
-      // Parse billing details from the 8-row client section
-      // The structure within each client section:
-      // Row 0: Payment Status for each month (columns L-AU)
-      // Row 1: Due Date for each month
-      // Row 2: Bill amount for each month  
-      // Row 3: Tax amount for each month
-      // Row 4: Total Bill for each month
-      // Row 5: Paid amount for each month
-      // Row 6: Signed status for each month
-      // Row 7: Invoiced status for each month
-
-      if (clientSection.length >= 8) {
-        const paymentStatusRow = clientSection[0] || [];
-        const dueDateRow = clientSection[1] || [];
-        const billRow = clientSection[2] || [];
-        const taxRow = clientSection[3] || [];
-        const totalBillRow = clientSection[4] || [];
-        const paidRow = clientSection[5] || [];
-        const signedRow = clientSection[6] || [];
-        const invoicedRow = clientSection[7] || [];
-
-        // Process each month (columns L-AU, indexes 11-46)
-        for (let col = 11; col <= 46; col++) {
-          const monthIndex = col - 11; // Convert to 0-based index for monthlyHeaders
-          const monthHeader = monthlyHeaders[monthIndex];
+      // Extract billing details from the client row (columns L-AU)
+      for (let col = 11; col <= 46; col++) {
+        const monthIndex = col - 11;
+        const monthHeader = monthlyHeaders[monthIndex];
+        
+        if (monthHeader && monthHeader.trim()) {
+          const paymentStatus = row[col]?.toString().trim();
           
-          if (monthHeader && monthHeader.trim()) {
-            const monthData: any = {};
+          if (paymentStatus) {
+            const monthData: any = {
+              payment_status: paymentStatus
+            };
             
-            // Extract data for this month from each row
-            const paymentStatus = paymentStatusRow[col]?.toString().trim();
-            const dueDate = dueDateRow[col]?.toString().trim();
-            const bill = billRow[col];
-            const tax = taxRow[col];
-            const totalBill = totalBillRow[col];
-            const paid = paidRow[col];
-            const signed = signedRow[col]?.toString().trim();
-            const invoiced = invoicedRow[col]?.toString().trim();
-
-            // Only add data if there's meaningful content
-            if (paymentStatus) monthData.payment_status = paymentStatus;
-            if (dueDate) monthData.due_date = dueDate;
-            if (bill !== undefined && bill !== null && bill !== '') {
-              monthData.bill = parseFloat(bill.toString().replace(/[^\d.-]/g, '')) || 0;
-            }
-            if (tax !== undefined && tax !== null && tax !== '') {
-              monthData.tax = parseFloat(tax.toString().replace(/[^\d.-]/g, '')) || 0;
-            }
-            if (totalBill !== undefined && totalBill !== null && totalBill !== '') {
-              monthData.total_bill = parseFloat(totalBill.toString().replace(/[^\d.-]/g, '')) || 0;
-            }
-            if (paid !== undefined && paid !== null && paid !== '') {
-              monthData.paid = parseFloat(paid.toString().replace(/[^\d.-]/g, '')) || 0;
-            }
-            if (signed) monthData.signed = signed;
-            if (invoiced) monthData.invoiced = invoiced;
-
-            // Only add month data if there's at least one meaningful field
-            if (Object.keys(monthData).length > 0) {
-              masterAccountingData.billing_details[monthHeader] = monthData;
-            }
-          }
-        }
-
-        console.log(`Extracted billing details for client ${clientNumber}:`, {
-          label: masterAccountingData.label,
-          monthsWithData: Object.keys(masterAccountingData.billing_details).length,
-          monthHeaders: Object.keys(masterAccountingData.billing_details)
-        });
-      }
-
-      // Extract other data from the client section
-      for (let i = 0; i < clientSection.length; i++) {
-        const row = clientSection[i];
-        if (!row) continue;
-
-        // Extract sales notes from column D (index 3)
-        if (row[3] && typeof row[3] === 'string' && row[3].trim()) {
-          if (!masterAccountingData.salesNotes) {
-            masterAccountingData.salesNotes = row[3].toString().trim();
-          }
-        }
-
-        // Look for payment statuses
-        const statusIndex = row.findIndex(cell => 
-          cell && typeof cell === 'string' && cell.toString().toLowerCase().includes('status')
-        );
-        if (statusIndex >= 0) {
-          for (let j = statusIndex + 1; j < row.length; j++) {
-            const status = row[j];
-            if (status && typeof status === 'string' && status.trim()) {
-              masterAccountingData.paymentStatuses.push(status.toString().trim());
-            }
-          }
-        }
-
-        // Look for tax information
-        if (row.some(cell => cell && cell.toString().toLowerCase().includes('contract tax'))) {
-          const taxIndex = row.findIndex(cell => 
-            cell && cell.toString().toLowerCase().includes('contract tax')
-          );
-          if (taxIndex >= 0 && row[taxIndex + 1]) {
-            masterAccountingData.contractTaxRate = parseFloat(row[taxIndex + 1]) || 0;
-          }
-        }
-
-        if (row.some(cell => cell && cell.toString().toLowerCase().includes('liquidation tax'))) {
-          const taxIndex = row.findIndex(cell => 
-            cell && cell.toString().toLowerCase().includes('liquidation tax')
-          );
-          if (taxIndex >= 0 && row[taxIndex + 1]) {
-            masterAccountingData.liquidationTaxRate = parseFloat(row[taxIndex + 1]) || 0;
+            // For now, we only have payment status from this row structure
+            // Due dates, amounts, etc. would need to be found in other rows or sheets
+            
+            clientData.billing_details[monthHeader] = monthData;
           }
         }
       }
+
+      console.log(`Client ${clientNumber + 1} data:`, {
+        label: clientData.label,
+        monthsWithData: Object.keys(clientData.billing_details).length,
+        monthHeaders: Object.keys(clientData.billing_details)
+      });
+
+      const now = new Date().toISOString();
+      const client: Client = {
+        uid: generateUID(),
+        isInV2: version === 'V2',
+        isInV3: version === 'V3',
+        isInV4: version === 'V4',
+        isInMasterAccounting: false,
+        
+        v2: version === 'V2' ? clientData : undefined,
+        v3: version === 'V3' ? clientData : undefined,
+        v4: version === 'V4' ? clientData : undefined,
+        
+        first_name: firstName,
+        last_name: lastName,
+        
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      console.log(`Created ${version} client ${clientNumber + 1}:`, {
+        clientNumber: clientNumber + 1,
+        first_name: client.first_name,
+        last_name: client.last_name,
+        uid: client.uid,
+        rowIndex: rowIndex + 1,
+        billingMonths: Object.keys(clientData.billing_details).length
+      });
+
+      clients.push(client);
+    });
+
+    console.log(`${version} parsing complete. Found ${clients.length} clients.`);
+    return clients;
+  };
+
+  // Parse master accounting file (adapted from MasterAccountingParser)
+  const parseMasterAccounting = (rows: any[][]): Client[] => {
+    const clients: Client[] = [];
+    
+    console.log('Starting Master Accounting parsing, total rows:', rows.length);
+
+    // Extract monthly period headers from Row 13 (index 12), columns L-AU (indexes 11-46)
+    const monthlyHeaders: string[] = [];
+    if (rows[12]) { // Row 13 (0-indexed as 12)
+      for (let col = 11; col <= 46; col++) { // Columns L-AU (L=11, AU=46)
+        const header = rows[12][col];
+        if (header && typeof header === 'string' && header.trim()) {
+          // Headers are already in readable format like "1 April 2024"
+          monthlyHeaders.push(header.trim());
+        } else if (header && typeof header !== 'string') {
+          // Convert non-string headers to string first
+          const headerStr = header.toString();
+          if (headerStr && headerStr.trim()) {
+            monthlyHeaders.push(headerStr.trim());
+          }
+        }
+      }
+    }
+    console.log('Monthly period headers found:', monthlyHeaders);
+
+    // Find all client rows - they have "Last" and "First" in columns 4 and 5
+    const clientRows: number[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (row && row[4] === 'Last' && row[5] === 'First') {
+        clientRows.push(i);
+      }
+    }
+    
+    console.log(`Found ${clientRows.length} client rows at:`, clientRows.map(r => r + 1));
+
+    // Process each client row
+    clientRows.forEach((rowIndex, clientNumber) => {
+      const row = rows[rowIndex];
+      if (!row) return;
+
+      console.log(`Processing client ${clientNumber + 1} at row ${rowIndex + 1}`);
+
+      const masterAccountingData = {
+        label: row[1]?.toString().trim() || '', // Client number from column B
+        operationsNotes: row[2]?.toString().trim() || '', // Notes from column C
+        billing_details: {} as { [month: string]: {
+          payment_status?: string;
+          due_date?: string;
+          bill?: number;
+          tax?: number;
+          total_bill?: number;
+          paid?: number;
+          signed?: string;
+          invoiced?: string;
+        }}
+      };
+
+      // Look for actual client data in the next row (names, addresses, etc.)
+      const dataRowIndex = rowIndex + 1;
+      let firstName = '';
+      let lastName = '';
+      
+      if (rows[dataRowIndex]) {
+        const dataRow = rows[dataRowIndex];
+        lastName = cleanExcelValue(dataRow[4]); // Column E
+        firstName = cleanExcelValue(dataRow[5]); // Column F
+        
+        console.log(`Client ${clientNumber + 1} names: ${firstName} ${lastName}`);
+      }
+
+      // Extract billing details from the client row (columns L-AU)
+      for (let col = 11; col <= 46; col++) {
+        const monthIndex = col - 11;
+        const monthHeader = monthlyHeaders[monthIndex];
+        
+        if (monthHeader && monthHeader.trim()) {
+          const paymentStatus = row[col]?.toString().trim();
+          
+          if (paymentStatus) {
+            const monthData: any = {
+              payment_status: paymentStatus
+            };
+            
+            // For now, we only have payment status from this row structure
+            // Due dates, amounts, etc. would need to be found in other rows or sheets
+            
+            masterAccountingData.billing_details[monthHeader] = monthData;
+          }
+        }
+      }
+
+      console.log(`Client ${clientNumber + 1} billing details:`, {
+        label: masterAccountingData.label,
+        monthsWithData: Object.keys(masterAccountingData.billing_details).length,
+        monthHeaders: Object.keys(masterAccountingData.billing_details)
+      });
 
       const now = new Date().toISOString();
       const client: Client = {
@@ -1210,64 +1219,24 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
         
         master_accounting: masterAccountingData,
         
-        first_name: masterAccountingData.firstName,
-        last_name: masterAccountingData.lastName,
-        liquidationTaxRate: masterAccountingData.liquidationTaxRate,
+        first_name: firstName,
+        last_name: lastName,
         
         createdAt: now,
         updatedAt: now,
       };
 
-      console.log(`Created Master Accounting client ${clientNumber}:`, {
-        clientNumber: clientNumber,
+      console.log(`Created Master Accounting client ${clientNumber + 1}:`, {
+        clientNumber: clientNumber + 1,
         first_name: client.first_name,
         last_name: client.last_name,
         uid: client.uid,
-        rowRange: `${currentRowIndex + 1}-${currentRowIndex + rowsPerClient}`,
+        rowIndex: rowIndex + 1,
         billingMonths: Object.keys(masterAccountingData.billing_details).length
       });
 
       clients.push(client);
-
-      // Move to next client section
-      currentRowIndex += rowsPerClient;
-      clientNumber++;
-
-      // Handle gaps/hidden lines - look for the next section with data
-      let foundNextSection = false;
-      const maxGapRows = 20; // Don't search too far ahead
-      
-      for (let gap = 0; gap < maxGapRows; gap++) {
-        const nextSectionStart = currentRowIndex + gap;
-        if (nextSectionStart + rowsPerClient > rows.length) break;
-
-        // Check if this potential next section has data
-        let hasNextData = false;
-        for (let i = 0; i < rowsPerClient; i++) {
-          const checkRow = rows[nextSectionStart + i];
-          if (checkRow && (
-            (checkRow[1] && checkRow[1].toString().trim()) || 
-            (checkRow[2] && checkRow[2].toString().trim()) || 
-            (checkRow[3] && checkRow[3].toString().trim())
-          )) {
-            hasNextData = true;
-            break;
-          }
-        }
-
-        if (hasNextData) {
-          currentRowIndex = nextSectionStart;
-          foundNextSection = true;
-          console.log(`Found next client section at row ${currentRowIndex + 1} (gap of ${gap} rows)`);
-          break;
-        }
-      }
-
-      if (!foundNextSection) {
-        console.log(`No more client sections found after row ${currentRowIndex + 1}, ending parsing`);
-        break;
-      }
-    }
+    });
 
     console.log(`Master Accounting parsing complete. Found ${clients.length} clients.`);
     return clients;
@@ -2011,14 +1980,14 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
       // Master Accounting Additional Data
       client.master_accounting?.contractTaxRate || 0,
       client.master_accounting?.liquidationTaxRate || 0,
-      client.master_accounting?.salesNotes || '',
+      client.master_accounting?.operationsNotes || '',
       
       // Monthly Billing Details - Dynamic columns for each month
       ...sortedBillingMonths.flatMap(month => {
         const monthData = client.master_accounting?.billing_details?.[month];
         return [
           monthData?.payment_status || '',
-          monthData?.due_date || '',
+          monthData?.due_date ? formatDate(monthData.due_date) : '-',
           monthData?.bill || 0,
           monthData?.tax || 0,
           monthData?.total_bill || 0,
@@ -2819,9 +2788,6 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
                                         <Typography variant="body2" sx={{ lineHeight: 1.6, mb: 3 }}>
                                           <strong>Client Number (Column B):</strong> {client.master_accounting.label}<br/>
                                           <strong>Name:</strong> {client.first_name} {client.last_name}<br/>
-                                          <strong>Contract Tax Rate:</strong> {client.master_accounting.contractTaxRate || 0}%<br/>
-                                          <strong>Liquidation Tax Rate:</strong> {client.master_accounting.liquidationTaxRate || 0}%<br/>
-                                          <strong>Sales Notes:</strong> {client.master_accounting.salesNotes || 'None'}<br/>
                                         </Typography>
                                         
                                         {/* Billing Details Section */}
@@ -2863,7 +2829,7 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
                                                           />
                                                         )}
                                                       </TableCell>
-                                                      <TableCell>{details.due_date || '-'}</TableCell>
+                                                      <TableCell>{details.due_date ? formatDate(details.due_date) : '-'}</TableCell>
                                                       <TableCell>
                                                         {details.bill !== undefined ? `$${details.bill.toFixed(2)}` : '-'}
                                                       </TableCell>
