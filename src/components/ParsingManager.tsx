@@ -65,6 +65,7 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
   const [loading, setLoading] = useState(false);
   const [editingStates, setEditingStates] = useState<EditingState>({});
   const [editedData, setEditedData] = useState<{ [clientNumber: string]: Partial<Client> }>({});
+  const [expandedRows, setExpandedRows] = useState<{ [clientNumber: string]: boolean }>({});
   
   // Track uploaded files
   const [uploadedFiles, setUploadedFiles] = useState({
@@ -533,6 +534,14 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
     return client[field];
   };
 
+  // Expand/collapse functions
+  const toggleExpansion = (clientNumber: string) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [clientNumber]: !prev[clientNumber]
+    }));
+  };
+
   // Format dates for display
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
@@ -663,6 +672,7 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
             <tbody>
               {clients.map((client) => {
                 const isEditing = editingStates[client.clientNumber];
+                const isExpanded = expandedRows[client.clientNumber];
                 const versions = [
                   client.isInV2 && 'V2',
                   client.isInV3 && 'V3',
@@ -671,136 +681,247 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
                 ].filter(Boolean).join(', ');
 
                 return (
-                  <tr key={client.clientNumber}>
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                      {isEditing ? (
-                        <div>
+                  <React.Fragment key={client.clientNumber}>
+                    {/* Main Client Row */}
+                    <tr>
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                          {/* Expand/Collapse Button */}
                           <button
-                            onClick={() => saveEditing(client.clientNumber)}
-                            style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
+                            onClick={() => toggleExpansion(client.clientNumber)}
+                            style={{
+                              padding: '4px 8px',
+                              backgroundColor: '#6c757d',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '3px',
+                              cursor: 'pointer',
+                              fontSize: '0.8em'
+                            }}
                           >
-                            Save
+                            {isExpanded ? '▼' : '▶'}
                           </button>
-                          <button
-                            onClick={() => cancelEditing(client.clientNumber)}
-                            style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
-                          >
-                            Cancel
-                          </button>
+                          
+                          {/* Edit/Save/Cancel Buttons */}
+                          {isEditing ? (
+                            <>
+                              <button
+                                onClick={() => saveEditing(client.clientNumber)}
+                                style={{ padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.8em' }}
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => cancelEditing(client.clientNumber)}
+                                style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.8em' }}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => startEditing(client.clientNumber)}
+                              style={{ padding: '4px 8px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.8em' }}
+                            >
+                              Edit
+                            </button>
+                          )}
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => startEditing(client.clientNumber)}
-                          style={{ padding: '4px 8px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
-                        >
-                          Edit
-                        </button>
-                      )}
-                    </td>
-                    
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>{client.clientNumber}</td>
-                    
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={`${getDisplayValue(client, 'firstName')} ${getDisplayValue(client, 'lastName')}`}
-                          onChange={(e) => {
-                            const [firstName, ...lastNameParts] = e.target.value.split(' ');
-                            updateField(client.clientNumber, 'firstName', firstName || '');
-                            updateField(client.clientNumber, 'lastName', lastNameParts.join(' ') || '');
-                          }}
-                          style={{ width: '100%', padding: '4px' }}
-                        />
-                      ) : (
-                        `${client.firstName} ${client.lastName}`.trim()
-                      )}
-                    </td>
-                    
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                      {isEditing ? (
-                        <input
-                          type="email"
-                          value={getDisplayValue(client, 'email') || ''}
-                          onChange={(e) => updateField(client.clientNumber, 'email', e.target.value)}
-                          style={{ width: '100%', padding: '4px' }}
-                        />
-                      ) : (
-                        client.email || ''
-                      )}
-                    </td>
-                    
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={getDisplayValue(client, 'tdyLocation') || ''}
-                          onChange={(e) => updateField(client.clientNumber, 'tdyLocation', e.target.value)}
-                          style={{ width: '100%', padding: '4px' }}
-                        />
-                      ) : (
-                        client.tdyLocation || ''
-                      )}
-                    </td>
-                    
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={getDisplayValue(client, 'tdyType') || ''}
-                          onChange={(e) => updateField(client.clientNumber, 'tdyType', e.target.value)}
-                          style={{ width: '100%', padding: '4px' }}
-                        />
-                      ) : (
-                        client.tdyType || ''
-                      )}
-                    </td>
-                    
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={getDisplayValue(client, 'dealType') || ''}
-                          onChange={(e) => updateField(client.clientNumber, 'dealType', e.target.value)}
-                          style={{ width: '100%', padding: '4px' }}
-                        />
-                      ) : (
-                        client.dealType || ''
-                      )}
-                    </td>
-                    
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                      {isEditing ? (
-                        <input
-                          type="date"
-                          value={getDisplayValue(client, 'contractStartDate') ? new Date(getDisplayValue(client, 'contractStartDate')).toISOString().split('T')[0] : ''}
-                          onChange={(e) => updateField(client.clientNumber, 'contractStartDate', e.target.value)}
-                          style={{ width: '100%', padding: '4px' }}
-                        />
-                      ) : (
-                        formatDate(client.contractStartDate)
-                      )}
-                    </td>
-                    
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                      {isEditing ? (
-                        <input
-                          type="date"
-                          value={getDisplayValue(client, 'contractEndDate') ? new Date(getDisplayValue(client, 'contractEndDate')).toISOString().split('T')[0] : ''}
-                          onChange={(e) => updateField(client.clientNumber, 'contractEndDate', e.target.value)}
-                          style={{ width: '100%', padding: '4px' }}
-                        />
-                      ) : (
-                        formatDate(client.contractEndDate)
-                      )}
-                    </td>
-                    
-                    <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                      <span style={{ fontSize: '0.8em', backgroundColor: '#e3f2fd', padding: '2px 6px', borderRadius: '12px' }}>
-                        {versions}
-                      </span>
-                    </td>
-                  </tr>
+                      </td>
+                      
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>{client.clientNumber}</td>
+                      
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={`${getDisplayValue(client, 'firstName')} ${getDisplayValue(client, 'lastName')}`}
+                            onChange={(e) => {
+                              const [firstName, ...lastNameParts] = e.target.value.split(' ');
+                              updateField(client.clientNumber, 'firstName', firstName || '');
+                              updateField(client.clientNumber, 'lastName', lastNameParts.join(' ') || '');
+                            }}
+                            style={{ width: '100%', padding: '4px' }}
+                          />
+                        ) : (
+                          `${client.firstName} ${client.lastName}`.trim()
+                        )}
+                      </td>
+                      
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                        {isEditing ? (
+                          <input
+                            type="email"
+                            value={getDisplayValue(client, 'email') || ''}
+                            onChange={(e) => updateField(client.clientNumber, 'email', e.target.value)}
+                            style={{ width: '100%', padding: '4px' }}
+                          />
+                        ) : (
+                          client.email || ''
+                        )}
+                      </td>
+                      
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={getDisplayValue(client, 'tdyLocation') || ''}
+                            onChange={(e) => updateField(client.clientNumber, 'tdyLocation', e.target.value)}
+                            style={{ width: '100%', padding: '4px' }}
+                          />
+                        ) : (
+                          client.tdyLocation || ''
+                        )}
+                      </td>
+                      
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={getDisplayValue(client, 'tdyType') || ''}
+                            onChange={(e) => updateField(client.clientNumber, 'tdyType', e.target.value)}
+                            style={{ width: '100%', padding: '4px' }}
+                          />
+                        ) : (
+                          client.tdyType || ''
+                        )}
+                      </td>
+                      
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={getDisplayValue(client, 'dealType') || ''}
+                            onChange={(e) => updateField(client.clientNumber, 'dealType', e.target.value)}
+                            style={{ width: '100%', padding: '4px' }}
+                          />
+                        ) : (
+                          client.dealType || ''
+                        )}
+                      </td>
+                      
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                        {isEditing ? (
+                          <input
+                            type="date"
+                            value={getDisplayValue(client, 'contractStartDate') ? new Date(getDisplayValue(client, 'contractStartDate')).toISOString().split('T')[0] : ''}
+                            onChange={(e) => updateField(client.clientNumber, 'contractStartDate', e.target.value)}
+                            style={{ width: '100%', padding: '4px' }}
+                          />
+                        ) : (
+                          formatDate(client.contractStartDate)
+                        )}
+                      </td>
+                      
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                        {isEditing ? (
+                          <input
+                            type="date"
+                            value={getDisplayValue(client, 'contractEndDate') ? new Date(getDisplayValue(client, 'contractEndDate')).toISOString().split('T')[0] : ''}
+                            onChange={(e) => updateField(client.clientNumber, 'contractEndDate', e.target.value)}
+                            style={{ width: '100%', padding: '4px' }}
+                          />
+                        ) : (
+                          formatDate(client.contractEndDate)
+                        )}
+                      </td>
+                      
+                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
+                        <span style={{ fontSize: '0.8em', backgroundColor: '#e3f2fd', padding: '2px 6px', borderRadius: '12px' }}>
+                          {versions}
+                        </span>
+                      </td>
+                    </tr>
+
+                    {/* Expanded Details Row */}
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={10} style={{ border: '1px solid #ddd', padding: '0', backgroundColor: '#f8f9fa' }}>
+                          <div style={{ padding: '1rem' }}>
+                            <h4 style={{ margin: '0 0 1rem 0', color: '#495057' }}>
+                              Detailed Data for Client #{client.clientNumber}
+                            </h4>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+                              {/* V2 Data */}
+                              {client.V2 && (
+                                <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                                  <h5 style={{ margin: '0 0 0.5rem 0', color: '#007bff', borderBottom: '2px solid #007bff', paddingBottom: '0.25rem' }}>
+                                    V2 Data
+                                  </h5>
+                                  <div style={{ fontSize: '0.85em', lineHeight: '1.4' }}>
+                                    <strong>Tab:</strong> {client.V2.tab}<br/>
+                                    <strong>Name:</strong> {client.V2.firstName} {client.V2.lastName}<br/>
+                                    <strong>Email:</strong> {client.V2.email}<br/>
+                                    <strong>TDY Location:</strong> {client.V2.tdyLocation}<br/>
+                                    <strong>Contract Start:</strong> {formatDate(client.V2.contractStartDate)}<br/>
+                                    <strong>Contract End:</strong> {formatDate(client.V2.contractEndDate)}<br/>
+                                    <strong>Billing Address:</strong> {client.V2.billingAddress}<br/>
+                                    <strong>Monthly Rent:</strong> ${client.V2.monthlyRent}<br/>
+                                    <strong>Monthly Utilities:</strong> ${client.V2.monthlyUtilities}<br/>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* V3 Data */}
+                              {client.V3 && (
+                                <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                                  <h5 style={{ margin: '0 0 0.5rem 0', color: '#28a745', borderBottom: '2px solid #28a745', paddingBottom: '0.25rem' }}>
+                                    V3 Data
+                                  </h5>
+                                  <div style={{ fontSize: '0.85em', lineHeight: '1.4' }}>
+                                    <strong>Tab:</strong> {client.V3.tab}<br/>
+                                    <strong>Name:</strong> {client.V3.firstName} {client.V3.lastName}<br/>
+                                    <strong>Email:</strong> {client.V3.email}<br/>
+                                    <strong>TDY Location:</strong> {client.V3.tdyLocation}<br/>
+                                    <strong>Sales Rep:</strong> {client.V3.salesRep}<br/>
+                                    <strong>Contract Start:</strong> {formatDate(client.V3.contractStartDate)}<br/>
+                                    <strong>Contract End:</strong> {formatDate(client.V3.contractEndDate)}<br/>
+                                    <strong>Number of Nights:</strong> {client.V3.numberOfNights}<br/>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* V4 Data */}
+                              {client.V4 && (
+                                <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                                  <h5 style={{ margin: '0 0 0.5rem 0', color: '#ffc107', borderBottom: '2px solid #ffc107', paddingBottom: '0.25rem' }}>
+                                    V4 Data
+                                  </h5>
+                                  <div style={{ fontSize: '0.85em', lineHeight: '1.4' }}>
+                                    <strong>Tab:</strong> {client.V4.tab}<br/>
+                                    <strong>Name:</strong> {client.V4.firstName} {client.V4.lastName}<br/>
+                                    <strong>Email:</strong> {client.V4.email}<br/>
+                                    <strong>TDY Location:</strong> {client.V4.tdyLocation}<br/>
+                                    <strong>Sales Rep:</strong> {client.V4.salesRep}<br/>
+                                    <strong>Contract Start:</strong> {formatDate(client.V4.contractStartDate)}<br/>
+                                    <strong>Contract End:</strong> {formatDate(client.V4.contractEndDate)}<br/>
+                                    <strong>Number of Nights:</strong> {client.V4.numberOfNights}<br/>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Master Accounting Data */}
+                              {client.master_accounting && (
+                                <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                                  <h5 style={{ margin: '0 0 0.5rem 0', color: '#dc3545', borderBottom: '2px solid #dc3545', paddingBottom: '0.25rem' }}>
+                                    Master Accounting Data
+                                  </h5>
+                                  <div style={{ fontSize: '0.85em', lineHeight: '1.4' }}>
+                                    <strong>Tab:</strong> {client.master_accounting.tab}<br/>
+                                    <strong>Sales Notes:</strong> {client.master_accounting.salesNotes}<br/>
+                                    <strong>Contract Tax Rate:</strong> {client.master_accounting.contractTaxRate}%<br/>
+                                    <strong>Liquidation Tax Rate:</strong> {client.master_accounting.liquidationTaxRate}%<br/>
+                                    <strong>Payment Statuses:</strong> {client.master_accounting.paymentStatuses?.join(', ') || 'None'}<br/>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>

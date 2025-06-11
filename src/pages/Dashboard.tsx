@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import ParsingManager from '../components/ParsingManager';
+import PaymentTimeline from '../components/PaymentTimeline';
 
 // Client interface (matching the one from ParsingManager)
 interface Client {
@@ -49,6 +50,7 @@ interface Client {
 const Dashboard: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
+  const [activeTab, setActiveTab] = useState<'parsing' | 'timeline'>('parsing');
 
   const handleLogout = async () => {
     try {
@@ -62,6 +64,14 @@ const Dashboard: React.FC = () => {
     setClients(updatedClients);
     console.log(`Updated client list: ${updatedClients.length} clients`);
   };
+
+  // Convert clients to timeline format
+  const timelineClients = clients.map(client => ({
+    clientNumber: client.clientNumber,
+    firstName: client.firstName,
+    lastName: client.lastName,
+    email: client.email
+  }));
 
   return (
     <div style={{ padding: '2rem' }}>
@@ -100,8 +110,81 @@ const Dashboard: React.FC = () => {
         </div>
       </header>
 
+      {/* Tab Navigation */}
+      <div style={{ marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', borderBottom: '2px solid #eee' }}>
+          <button
+            onClick={() => setActiveTab('parsing')}
+            style={{
+              padding: '1rem 2rem',
+              backgroundColor: activeTab === 'parsing' ? '#007bff' : 'transparent',
+              color: activeTab === 'parsing' ? 'white' : '#007bff',
+              border: 'none',
+              borderBottom: activeTab === 'parsing' ? '2px solid #007bff' : '2px solid transparent',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 'bold'
+            }}
+          >
+            File Parsing & Clients
+          </button>
+          <button
+            onClick={() => setActiveTab('timeline')}
+            style={{
+              padding: '1rem 2rem',
+              backgroundColor: activeTab === 'timeline' ? '#007bff' : 'transparent',
+              color: activeTab === 'timeline' ? 'white' : '#007bff',
+              border: 'none',
+              borderBottom: activeTab === 'timeline' ? '2px solid #007bff' : '2px solid transparent',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 'bold'
+            }}
+          >
+            Payment Timeline
+          </button>
+        </div>
+      </div>
+
       <main>
-        <ParsingManager onClientsUpdated={handleClientsUpdated} />
+        {activeTab === 'parsing' && (
+          <ParsingManager onClientsUpdated={handleClientsUpdated} />
+        )}
+        
+        {activeTab === 'timeline' && (
+          <>
+            {clients.length === 0 ? (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '3rem',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #dee2e6'
+              }}>
+                <h3 style={{ color: '#6c757d', marginBottom: '1rem' }}>No Clients Available</h3>
+                <p style={{ color: '#6c757d', marginBottom: '1.5rem' }}>
+                  Please upload and compile client files in the "File Parsing & Clients" tab first.
+                </p>
+                <button
+                  onClick={() => setActiveTab('parsing')}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '1rem'
+                  }}
+                >
+                  Go to File Parsing
+                </button>
+              </div>
+            ) : (
+              <PaymentTimeline clients={timelineClients} />
+            )}
+          </>
+        )}
       </main>
     </div>
   );
