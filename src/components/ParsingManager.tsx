@@ -2,6 +2,44 @@ import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Collapse,
+  Container,
+  Divider,
+  IconButton,
+  Input,
+  LinearProgress,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+  Alert,
+  Tooltip
+} from '@mui/material';
+import {
+  Upload as UploadIcon,
+  CheckCircle as CheckCircleIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Edit as EditIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon,
+  Delete as DeleteIcon,
+  CloudUpload as CloudUploadIcon,
+  Download as DownloadIcon,
+  Comment as CommentIcon,
+  Clear as ClearIcon
+} from '@mui/icons-material';
 
 // Import the parsers (we'll need to adapt them for multi-tab parsing)
 // For now, I'll include the parsing logic directly in this component
@@ -797,535 +835,539 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
   };
 
   return (
-    <div style={{ padding: '1rem' }}>
-      <h2>Client Data Management</h2>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4, fontWeight: 'bold', color: 'primary.main' }}>
+        Client Data Management
+      </Typography>
       
       {/* File Upload Section */}
-      <div style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-        <div>
-          <label style={{ marginBottom: '0.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            V2 File:
-            {uploadedFiles.v2 && <span style={{ color: '#4CAF50', fontSize: '1.2rem' }}>✓</span>}
-          </label>
-          <input
-            type="file"
-            accept=".xlsx"
-            onChange={(e) => handleFileUpload(e, 'v2')}
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
-        
-        <div>
-          <label style={{ marginBottom: '0.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            V3 File:
-            {uploadedFiles.v3 && <span style={{ color: '#4CAF50', fontSize: '1.2rem' }}>✓</span>}
-          </label>
-          <input
-            type="file"
-            accept=".xlsx"
-            onChange={(e) => handleFileUpload(e, 'v3')}
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
-        
-        <div>
-          <label style={{ marginBottom: '0.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            V4 File:
-            {uploadedFiles.v4 && <span style={{ color: '#4CAF50', fontSize: '1.2rem' }}>✓</span>}
-          </label>
-          <input
-            type="file"
-            accept=".xlsx"
-            onChange={(e) => handleFileUpload(e, 'v4')}
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
-        
-        <div>
-          <label style={{ marginBottom: '0.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            Master Accounting:
-            {uploadedFiles.master_accounting && <span style={{ color: '#4CAF50', fontSize: '1.2rem' }}>✓</span>}
-          </label>
-          <input
-            type="file"
-            accept=".xlsx"
-            onChange={(e) => handleFileUpload(e, 'master_accounting')}
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
-      </div>
+      <Card sx={{ mb: 4, boxShadow: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <UploadIcon color="primary" />
+            File Upload
+          </Typography>
+          
+          <Box 
+            sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+              gap: 3 
+            }}
+          >
+            {(['v2', 'v3', 'v4', 'master_accounting'] as const).map((fileType) => (
+              <Card key={fileType} variant="outlined" sx={{ height: '100%', position: 'relative' }}>
+                <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                  <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                    {fileType === 'master_accounting' ? 'Master Accounting' : fileType.toUpperCase()} File
+                    {uploadedFiles[fileType] && (
+                      <CheckCircleIcon color="success" fontSize="small" />
+                    )}
+                  </Typography>
+                  
+                  <Box sx={{ mb: 2 }}>
+                    <Input
+                      type="file"
+                      inputProps={{ accept: '.xlsx' }}
+                      onChange={(e) => handleFileUpload(e as any, fileType)}
+                      sx={{ display: 'none' }}
+                      id={`upload-${fileType}`}
+                    />
+                    <label htmlFor={`upload-${fileType}`}>
+                      <Button
+                        variant={uploadedFiles[fileType] ? "outlined" : "contained"}
+                        component="span"
+                        startIcon={uploadedFiles[fileType] ? <CheckCircleIcon /> : <UploadIcon />}
+                        color={uploadedFiles[fileType] ? "success" : "primary"}
+                        fullWidth
+                      >
+                        {uploadedFiles[fileType] ? 'Uploaded' : 'Choose File'}
+                      </Button>
+                    </label>
+                  </Box>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
+        </CardContent>
+      </Card>
 
       {/* Compile Button */}
-      <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-        <button
+      <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Button
+          variant="contained"
+          size="large"
           onClick={compileClientList}
           disabled={!allFilesUploaded}
-          style={{
-            width: '100%',
-            maxWidth: '400px',
-            padding: '1rem 2rem',
+          startIcon={<CloudUploadIcon />}
+          sx={{
+            py: 2,
+            px: 4,
             fontSize: '1.1rem',
             fontWeight: 'bold',
-            backgroundColor: allFilesUploaded ? '#28a745' : '#6c757d',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: allFilesUploaded ? 'pointer' : 'not-allowed',
-            transition: 'all 0.3s ease',
-            boxShadow: allFilesUploaded ? '0 4px 8px rgba(40, 167, 69, 0.3)' : 'none'
+            borderRadius: 2,
+            boxShadow: allFilesUploaded ? 4 : 1,
+            minWidth: 300
           }}
         >
           {allFilesUploaded ? 'Compile Client List' : 'Upload All Files First'}
-        </button>
-      </div>
+        </Button>
+      </Box>
 
       {loading && (
-        <div style={{ textAlign: 'center', margin: '2rem 0' }}>
-          <div style={{ 
-            border: '4px solid #f3f3f3',
-            borderTop: '4px solid #3498db',
-            borderRadius: '50%',
-            width: '40px',
-            height: '40px',
-            animation: 'spin 2s linear infinite',
-            margin: '0 auto'
-          }}></div>
-          <p>Parsing files...</p>
-        </div>
+        <Card sx={{ mb: 4 }}>
+          <CardContent sx={{ textAlign: 'center', py: 4 }}>
+            <LinearProgress sx={{ mb: 2 }} />
+            <Typography variant="body1" color="text.secondary">
+              Parsing files...
+            </Typography>
+          </CardContent>
+        </Card>
       )}
 
       {/* Client Table */}
       {clients.length > 0 && (
-        <div style={{ overflowX: 'auto' }}>
-          <h3>Clients ({clients.length})</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f5f5f5' }}>
-                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Actions</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Client #</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Name</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Email</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>TDY Location</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>TDY Type</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Deal Type</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Contract Start</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Contract End</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'left' }}>Versions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.map((client) => {
-                const isEditing = editingStates[client.clientNumber];
-                const isExpanded = expandedRows[client.clientNumber];
-                const versions = [
-                  client.isInV2 && 'V2',
-                  client.isInV3 && 'V3',
-                  client.isInV4 && 'V4',
-                  client.isInMasterAccounting && 'MA'
-                ].filter(Boolean).join(', ');
+        <Card sx={{ boxShadow: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                Clients ({clients.length})
+              </Box>
+              <Chip label={`${clients.length} Total`} color="primary" variant="outlined" />
+            </Typography>
+            
+            <TableContainer component={Paper} sx={{ mb: 4 }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'grey.50' }}>Actions</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'grey.50' }}>Client #</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'grey.50' }}>Name</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'grey.50' }}>Email</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'grey.50' }}>TDY Location</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'grey.50' }}>TDY Type</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'grey.50' }}>Deal Type</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'grey.50' }}>Contract Start</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'grey.50' }}>Contract End</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'grey.50' }}>Versions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {clients.map((client) => {
+                    const isEditing = editingStates[client.clientNumber];
+                    const isExpanded = expandedRows[client.clientNumber];
+                    const versions = [
+                      client.isInV2 && 'V2',
+                      client.isInV3 && 'V3',
+                      client.isInV4 && 'V4',
+                      client.isInMasterAccounting && 'MA'
+                    ].filter(Boolean);
 
-                return (
-                  <React.Fragment key={client.clientNumber}>
-                    {/* Main Client Row */}
-                    <tr>
-                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
-                          {/* Expand/Collapse Button */}
-                          <button
-                            onClick={() => toggleExpansion(client.clientNumber)}
-                            style={{
-                              padding: '4px 8px',
-                              backgroundColor: '#6c757d',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '3px',
-                              cursor: 'pointer',
-                              fontSize: '0.8em'
-                            }}
-                          >
-                            {isExpanded ? '▼' : '▶'}
-                          </button>
+                    return (
+                      <React.Fragment key={client.clientNumber}>
+                        {/* Main Client Row */}
+                        <TableRow hover>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'wrap' }}>
+                              {/* Expand/Collapse Button */}
+                              <Tooltip title={isExpanded ? "Collapse details" : "Expand details"}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => toggleExpansion(client.clientNumber)}
+                                  color="primary"
+                                >
+                                  {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                </IconButton>
+                              </Tooltip>
+                              
+                              {/* Edit/Save/Cancel Buttons */}
+                              {isEditing ? (
+                                <>
+                                  <Tooltip title="Save changes">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => saveEditing(client.clientNumber)}
+                                      color="success"
+                                    >
+                                      <SaveIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Cancel editing">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => cancelEditing(client.clientNumber)}
+                                      color="error"
+                                    >
+                                      <CancelIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                </>
+                              ) : (
+                                <>
+                                  <Tooltip title="Edit client">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => startEditing(client.clientNumber)}
+                                      color="primary"
+                                    >
+                                      <EditIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title={`Delete client #${client.clientNumber}`}>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => deleteClient(client.clientNumber)}
+                                      color="error"
+                                    >
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                </>
+                              )}
+                            </Box>
+                          </TableCell>
                           
-                          {/* Edit/Save/Cancel Buttons */}
-                          {isEditing ? (
-                            <>
-                              <button
-                                onClick={() => saveEditing(client.clientNumber)}
-                                style={{ padding: '4px 8px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.8em' }}
-                              >
-                                Save
-                              </button>
-                              <button
-                                onClick={() => cancelEditing(client.clientNumber)}
-                                style={{ padding: '4px 8px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.8em' }}
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => startEditing(client.clientNumber)}
-                                style={{ padding: '4px 8px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.8em' }}
-                              >
-                                Edit
-                              </button>
-                              {/* Delete Button */}
-                              <button
-                                onClick={() => deleteClient(client.clientNumber)}
-                                style={{ 
-                                  padding: '4px 8px', 
-                                  backgroundColor: '#dc3545', 
-                                  color: 'white', 
-                                  border: 'none', 
-                                  borderRadius: '3px', 
-                                  cursor: 'pointer', 
-                                  fontSize: '0.8em'
+                          <TableCell>
+                            <Chip label={client.clientNumber} variant="outlined" size="small" />
+                          </TableCell>
+                          
+                          <TableCell>
+                            {isEditing ? (
+                              <TextField
+                                size="small"
+                                variant="outlined"
+                                value={`${getDisplayValue(client, 'firstName')} ${getDisplayValue(client, 'lastName')}`}
+                                onChange={(e) => {
+                                  const [firstName, ...lastNameParts] = e.target.value.split(' ');
+                                  updateField(client.clientNumber, 'firstName', firstName || '');
+                                  updateField(client.clientNumber, 'lastName', lastNameParts.join(' ') || '');
                                 }}
-                                title={`Delete client #${client.clientNumber}`}
-                              >
-                                🗑️
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                      
-                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>{client.clientNumber}</td>
-                      
-                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={`${getDisplayValue(client, 'firstName')} ${getDisplayValue(client, 'lastName')}`}
-                            onChange={(e) => {
-                              const [firstName, ...lastNameParts] = e.target.value.split(' ');
-                              updateField(client.clientNumber, 'firstName', firstName || '');
-                              updateField(client.clientNumber, 'lastName', lastNameParts.join(' ') || '');
-                            }}
-                            style={{ width: '100%', padding: '4px' }}
-                          />
-                        ) : (
-                          `${client.firstName} ${client.lastName}`.trim()
-                        )}
-                      </td>
-                      
-                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                        {isEditing ? (
-                          <input
-                            type="email"
-                            value={getDisplayValue(client, 'email') || ''}
-                            onChange={(e) => updateField(client.clientNumber, 'email', e.target.value)}
-                            style={{ width: '100%', padding: '4px' }}
-                          />
-                        ) : (
-                          client.email || ''
-                        )}
-                      </td>
-                      
-                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={getDisplayValue(client, 'tdyLocation') || ''}
-                            onChange={(e) => updateField(client.clientNumber, 'tdyLocation', e.target.value)}
-                            style={{ width: '100%', padding: '4px' }}
-                          />
-                        ) : (
-                          client.tdyLocation || ''
-                        )}
-                      </td>
-                      
-                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={getDisplayValue(client, 'tdyType') || ''}
-                            onChange={(e) => updateField(client.clientNumber, 'tdyType', e.target.value)}
-                            style={{ width: '100%', padding: '4px' }}
-                          />
-                        ) : (
-                          client.tdyType || ''
-                        )}
-                      </td>
-                      
-                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={getDisplayValue(client, 'dealType') || ''}
-                            onChange={(e) => updateField(client.clientNumber, 'dealType', e.target.value)}
-                            style={{ width: '100%', padding: '4px' }}
-                          />
-                        ) : (
-                          client.dealType || ''
-                        )}
-                      </td>
-                      
-                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                        {isEditing ? (
-                          <input
-                            type="date"
-                            value={getDisplayValue(client, 'contractStartDate') ? new Date(getDisplayValue(client, 'contractStartDate')).toISOString().split('T')[0] : ''}
-                            onChange={(e) => updateField(client.clientNumber, 'contractStartDate', e.target.value)}
-                            style={{ width: '100%', padding: '4px' }}
-                          />
-                        ) : (
-                          formatDate(client.contractStartDate)
-                        )}
-                      </td>
-                      
-                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                        {isEditing ? (
-                          <input
-                            type="date"
-                            value={getDisplayValue(client, 'contractEndDate') ? new Date(getDisplayValue(client, 'contractEndDate')).toISOString().split('T')[0] : ''}
-                            onChange={(e) => updateField(client.clientNumber, 'contractEndDate', e.target.value)}
-                            style={{ width: '100%', padding: '4px' }}
-                          />
-                        ) : (
-                          formatDate(client.contractEndDate)
-                        )}
-                      </td>
-                      
-                      <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                        <span style={{ fontSize: '0.8em', backgroundColor: '#e3f2fd', padding: '2px 6px', borderRadius: '12px' }}>
-                          {versions}
-                        </span>
-                      </td>
-                    </tr>
-
-                    {/* Expanded Details Row */}
-                    {isExpanded && (
-                      <tr>
-                        <td colSpan={10} style={{ border: '1px solid #ddd', padding: '0', backgroundColor: '#f8f9fa' }}>
-                          <div style={{ padding: '1rem' }}>
-                            <h4 style={{ margin: '0 0 1rem 0', color: '#495057' }}>
-                              Detailed Data for Client #{client.clientNumber}
-                            </h4>
-                            
-                            {/* Comments Section */}
-                            <div style={{ marginBottom: '1.5rem', backgroundColor: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #dee2e6' }}>
-                              <h5 style={{ margin: '0 0 0.5rem 0', color: '#6c757d', borderBottom: '2px solid #6c757d', paddingBottom: '0.25rem' }}>
-                                📝 Comments
-                              </h5>
-                              <textarea
-                                value={getDisplayValue(client, 'comments') || ''}
-                                onChange={(e) => updateField(client.clientNumber, 'comments', e.target.value)}
-                                placeholder="Add comments or notes about this client..."
-                                style={{
-                                  width: '100%',
-                                  minHeight: '80px',
-                                  padding: '0.75rem',
-                                  border: '1px solid #ced4da',
-                                  borderRadius: '4px',
-                                  fontSize: '0.9rem',
-                                  fontFamily: 'inherit',
-                                  resize: 'vertical',
-                                  backgroundColor: '#fff'
-                                }}
+                                fullWidth
                               />
-                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                <button
-                                  onClick={() => saveEditing(client.clientNumber)}
-                                  style={{
-                                    padding: '0.5rem 1rem',
-                                    backgroundColor: '#28a745',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontSize: '0.875rem'
+                            ) : (
+                              <Typography variant="body2">
+                                {`${client.firstName} ${client.lastName}`.trim()}
+                              </Typography>
+                            )}
+                          </TableCell>
+                          
+                          <TableCell>
+                            {isEditing ? (
+                              <TextField
+                                size="small"
+                                type="email"
+                                variant="outlined"
+                                value={getDisplayValue(client, 'email') || ''}
+                                onChange={(e) => updateField(client.clientNumber, 'email', e.target.value)}
+                                fullWidth
+                              />
+                            ) : (
+                              <Typography variant="body2" sx={{ color: client.email ? 'text.primary' : 'text.secondary' }}>
+                                {client.email || 'No email'}
+                              </Typography>
+                            )}
+                          </TableCell>
+                          
+                          <TableCell>
+                            {isEditing ? (
+                              <TextField
+                                size="small"
+                                variant="outlined"
+                                value={getDisplayValue(client, 'tdyLocation') || ''}
+                                onChange={(e) => updateField(client.clientNumber, 'tdyLocation', e.target.value)}
+                                fullWidth
+                              />
+                            ) : (
+                              <Typography variant="body2">
+                                {client.tdyLocation || '-'}
+                              </Typography>
+                            )}
+                          </TableCell>
+                          
+                          <TableCell>
+                            {isEditing ? (
+                              <TextField
+                                size="small"
+                                variant="outlined"
+                                value={getDisplayValue(client, 'tdyType') || ''}
+                                onChange={(e) => updateField(client.clientNumber, 'tdyType', e.target.value)}
+                                fullWidth
+                              />
+                            ) : (
+                              <Typography variant="body2">
+                                {client.tdyType || '-'}
+                              </Typography>
+                            )}
+                          </TableCell>
+                          
+                          <TableCell>
+                            {isEditing ? (
+                              <TextField
+                                size="small"
+                                variant="outlined"
+                                value={getDisplayValue(client, 'dealType') || ''}
+                                onChange={(e) => updateField(client.clientNumber, 'dealType', e.target.value)}
+                                fullWidth
+                              />
+                            ) : (
+                              <Typography variant="body2">
+                                {client.dealType || '-'}
+                              </Typography>
+                            )}
+                          </TableCell>
+                          
+                          <TableCell>
+                            {isEditing ? (
+                              <TextField
+                                size="small"
+                                type="date"
+                                variant="outlined"
+                                value={getDisplayValue(client, 'contractStartDate') ? new Date(getDisplayValue(client, 'contractStartDate')).toISOString().split('T')[0] : ''}
+                                onChange={(e) => updateField(client.clientNumber, 'contractStartDate', e.target.value)}
+                                InputLabelProps={{ shrink: true }}
+                                fullWidth
+                              />
+                            ) : (
+                              <Typography variant="body2">
+                                {formatDate(client.contractStartDate) || '-'}
+                              </Typography>
+                            )}
+                          </TableCell>
+                          
+                          <TableCell>
+                            {isEditing ? (
+                              <TextField
+                                size="small"
+                                type="date"
+                                variant="outlined"
+                                value={getDisplayValue(client, 'contractEndDate') ? new Date(getDisplayValue(client, 'contractEndDate')).toISOString().split('T')[0] : ''}
+                                onChange={(e) => updateField(client.clientNumber, 'contractEndDate', e.target.value)}
+                                InputLabelProps={{ shrink: true }}
+                                fullWidth
+                              />
+                            ) : (
+                              <Typography variant="body2">
+                                {formatDate(client.contractEndDate) || '-'}
+                              </Typography>
+                            )}
+                          </TableCell>
+                          
+                          <TableCell>
+                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                              {versions.map((version, index) => (
+                                <Chip
+                                  key={`${client.clientNumber}-${version}-${index}`}
+                                  label={version}
+                                  size="small"
+                                  color={
+                                    version === 'V2' ? 'primary' :
+                                    version === 'V3' ? 'success' :
+                                    version === 'V4' ? 'warning' : 'error'
+                                  }
+                                  variant="outlined"
+                                />
+                              ))}
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+
+                        {/* Expanded Details Row */}
+                        <TableRow>
+                          <TableCell colSpan={10} sx={{ p: 0, border: 'none' }}>
+                            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                              <Box sx={{ p: 3, backgroundColor: 'grey.50' }}>
+                                <Typography variant="h6" gutterBottom sx={{ mb: 3, color: 'primary.main' }}>
+                                  Detailed Data for Client #{client.clientNumber}
+                                </Typography>
+                                
+                                {/* Comments Section */}
+                                <Card sx={{ mb: 3, boxShadow: 2 }}>
+                                  <CardContent>
+                                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
+                                      <CommentIcon />
+                                      Comments
+                                    </Typography>
+                                    <TextField
+                                      multiline
+                                      rows={3}
+                                      fullWidth
+                                      variant="outlined"
+                                      value={getDisplayValue(client, 'comments') || ''}
+                                      onChange={(e) => updateField(client.clientNumber, 'comments', e.target.value)}
+                                      placeholder="Add comments or notes about this client..."
+                                      sx={{ mb: 2 }}
+                                    />
+                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                      <Button
+                                        variant="contained"
+                                        size="small"
+                                        startIcon={<SaveIcon />}
+                                        onClick={() => saveEditing(client.clientNumber)}
+                                        color="success"
+                                      >
+                                        Save Comments
+                                      </Button>
+                                      <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<ClearIcon />}
+                                        onClick={() => updateField(client.clientNumber, 'comments', '')}
+                                        color="inherit"
+                                      >
+                                        Clear
+                                      </Button>
+                                    </Box>
+                                  </CardContent>
+                                </Card>
+                                
+                                <Box 
+                                  sx={{ 
+                                    display: 'grid', 
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                                    gap: 3 
                                   }}
                                 >
-                                  Save Comments
-                                </button>
-                                <button
-                                  onClick={() => updateField(client.clientNumber, 'comments', '')}
-                                  style={{
-                                    padding: '0.5rem 1rem',
-                                    backgroundColor: '#6c757d',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontSize: '0.875rem'
-                                  }}
-                                >
-                                  Clear
-                                </button>
-                              </div>
-                            </div>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
-                              {/* V2 Data */}
-                              {client.V2 && (
-                                <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #dee2e6' }}>
-                                  <h5 style={{ margin: '0 0 0.5rem 0', color: '#007bff', borderBottom: '2px solid #007bff', paddingBottom: '0.25rem' }}>
-                                    V2 Data
-                                  </h5>
-                                  <div style={{ fontSize: '0.85em', lineHeight: '1.4' }}>
-                                    <strong>Tab:</strong> {client.V2.tab}<br/>
-                                    <strong>Name:</strong> {client.V2.firstName} {client.V2.lastName}<br/>
-                                    <strong>Email:</strong> {client.V2.email}<br/>
-                                    <strong>TDY Location:</strong> {client.V2.tdyLocation}<br/>
-                                    <strong>Contract Start:</strong> {formatDate(client.V2.contractStartDate)}<br/>
-                                    <strong>Contract End:</strong> {formatDate(client.V2.contractEndDate)}<br/>
-                                    <strong>Billing Address:</strong> {client.V2.billingAddress}<br/>
-                                    <strong>Monthly Rent:</strong> ${client.V2.monthlyRent}<br/>
-                                    <strong>Monthly Utilities:</strong> ${client.V2.monthlyUtilities}<br/>
-                                  </div>
-                                </div>
-                              )}
+                                  {/* V2 Data */}
+                                  {client.V2 && (
+                                    <Card sx={{ height: '100%', borderLeft: 4, borderColor: 'primary.main' }}>
+                                      <CardContent>
+                                        <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                                          V2 Data
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
+                                          <strong>Tab:</strong> {client.V2.tab}<br/>
+                                          <strong>Name:</strong> {client.V2.firstName} {client.V2.lastName}<br/>
+                                          <strong>Email:</strong> {client.V2.email}<br/>
+                                          <strong>TDY Location:</strong> {client.V2.tdyLocation}<br/>
+                                          <strong>Contract Start:</strong> {formatDate(client.V2.contractStartDate)}<br/>
+                                          <strong>Contract End:</strong> {formatDate(client.V2.contractEndDate)}<br/>
+                                          <strong>Billing Address:</strong> {client.V2.billingAddress}<br/>
+                                          <strong>Monthly Rent:</strong> ${client.V2.monthlyRent}<br/>
+                                          <strong>Monthly Utilities:</strong> ${client.V2.monthlyUtilities}<br/>
+                                        </Typography>
+                                      </CardContent>
+                                    </Card>
+                                  )}
 
-                              {/* V3 Data */}
-                              {client.V3 && (
-                                <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #dee2e6' }}>
-                                  <h5 style={{ margin: '0 0 0.5rem 0', color: '#28a745', borderBottom: '2px solid #28a745', paddingBottom: '0.25rem' }}>
-                                    V3 Data
-                                  </h5>
-                                  <div style={{ fontSize: '0.85em', lineHeight: '1.4' }}>
-                                    <strong>Tab:</strong> {client.V3.tab}<br/>
-                                    <strong>Name:</strong> {client.V3.firstName} {client.V3.lastName}<br/>
-                                    <strong>Email:</strong> {client.V3.email}<br/>
-                                    <strong>TDY Location:</strong> {client.V3.tdyLocation}<br/>
-                                    <strong>Sales Rep:</strong> {client.V3.salesRep}<br/>
-                                    <strong>Contract Start:</strong> {formatDate(client.V3.contractStartDate)}<br/>
-                                    <strong>Contract End:</strong> {formatDate(client.V3.contractEndDate)}<br/>
-                                    <strong>Number of Nights:</strong> {client.V3.numberOfNights}<br/>
-                                  </div>
-                                </div>
-                              )}
+                                  {/* V3 Data */}
+                                  {client.V3 && (
+                                    <Card sx={{ height: '100%', borderLeft: 4, borderColor: 'success.main' }}>
+                                      <CardContent>
+                                        <Typography variant="h6" gutterBottom sx={{ color: 'success.main', fontWeight: 'bold' }}>
+                                          V3 Data
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
+                                          <strong>Tab:</strong> {client.V3.tab}<br/>
+                                          <strong>Name:</strong> {client.V3.firstName} {client.V3.lastName}<br/>
+                                          <strong>Email:</strong> {client.V3.email}<br/>
+                                          <strong>TDY Location:</strong> {client.V3.tdyLocation}<br/>
+                                          <strong>Sales Rep:</strong> {client.V3.salesRep}<br/>
+                                          <strong>Contract Start:</strong> {formatDate(client.V3.contractStartDate)}<br/>
+                                          <strong>Contract End:</strong> {formatDate(client.V3.contractEndDate)}<br/>
+                                          <strong>Number of Nights:</strong> {client.V3.numberOfNights}<br/>
+                                        </Typography>
+                                      </CardContent>
+                                    </Card>
+                                  )}
 
-                              {/* V4 Data */}
-                              {client.V4 && (
-                                <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #dee2e6' }}>
-                                  <h5 style={{ margin: '0 0 0.5rem 0', color: '#ffc107', borderBottom: '2px solid #ffc107', paddingBottom: '0.25rem' }}>
-                                    V4 Data
-                                  </h5>
-                                  <div style={{ fontSize: '0.85em', lineHeight: '1.4' }}>
-                                    <strong>Tab:</strong> {client.V4.tab}<br/>
-                                    <strong>Name:</strong> {client.V4.firstName} {client.V4.lastName}<br/>
-                                    <strong>Email:</strong> {client.V4.email}<br/>
-                                    <strong>TDY Location:</strong> {client.V4.tdyLocation}<br/>
-                                    <strong>Sales Rep:</strong> {client.V4.salesRep}<br/>
-                                    <strong>Contract Start:</strong> {formatDate(client.V4.contractStartDate)}<br/>
-                                    <strong>Contract End:</strong> {formatDate(client.V4.contractEndDate)}<br/>
-                                    <strong>Number of Nights:</strong> {client.V4.numberOfNights}<br/>
-                                  </div>
-                                </div>
-                              )}
+                                  {/* V4 Data */}
+                                  {client.V4 && (
+                                    <Card sx={{ height: '100%', borderLeft: 4, borderColor: 'warning.main' }}>
+                                      <CardContent>
+                                        <Typography variant="h6" gutterBottom sx={{ color: 'warning.main', fontWeight: 'bold' }}>
+                                          V4 Data
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
+                                          <strong>Tab:</strong> {client.V4.tab}<br/>
+                                          <strong>Name:</strong> {client.V4.firstName} {client.V4.lastName}<br/>
+                                          <strong>Email:</strong> {client.V4.email}<br/>
+                                          <strong>TDY Location:</strong> {client.V4.tdyLocation}<br/>
+                                          <strong>Sales Rep:</strong> {client.V4.salesRep}<br/>
+                                          <strong>Contract Start:</strong> {formatDate(client.V4.contractStartDate)}<br/>
+                                          <strong>Contract End:</strong> {formatDate(client.V4.contractEndDate)}<br/>
+                                          <strong>Number of Nights:</strong> {client.V4.numberOfNights}<br/>
+                                        </Typography>
+                                      </CardContent>
+                                    </Card>
+                                  )}
 
-                              {/* Master Accounting Data */}
-                              {client.master_accounting && (
-                                <div style={{ backgroundColor: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #dee2e6' }}>
-                                  <h5 style={{ margin: '0 0 0.5rem 0', color: '#dc3545', borderBottom: '2px solid #dc3545', paddingBottom: '0.25rem' }}>
-                                    Master Accounting Data
-                                  </h5>
-                                  <div style={{ fontSize: '0.85em', lineHeight: '1.4' }}>
-                                    <strong>Tab:</strong> {client.master_accounting.tab}<br/>
-                                    <strong>Sales Notes:</strong> {client.master_accounting.salesNotes}<br/>
-                                    <strong>Contract Tax Rate:</strong> {client.master_accounting.contractTaxRate}%<br/>
-                                    <strong>Liquidation Tax Rate:</strong> {client.master_accounting.liquidationTaxRate}%<br/>
-                                    <strong>Payment Statuses:</strong> {client.master_accounting.paymentStatuses?.join(', ') || 'None'}<br/>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-          
-          {/* Create Clients in Database Button */}
-          <div style={{ marginTop: '2rem', textAlign: 'center', borderTop: '2px solid #eee', paddingTop: '2rem' }}>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '1rem' }}>
-              <button
+                                  {/* Master Accounting Data */}
+                                  {client.master_accounting && (
+                                    <Card sx={{ height: '100%', borderLeft: 4, borderColor: 'error.main' }}>
+                                      <CardContent>
+                                        <Typography variant="h6" gutterBottom sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                          Master Accounting Data
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
+                                          <strong>Tab:</strong> {client.master_accounting.tab}<br/>
+                                          <strong>Sales Notes:</strong> {client.master_accounting.salesNotes}<br/>
+                                          <strong>Contract Tax Rate:</strong> {client.master_accounting.contractTaxRate}%<br/>
+                                          <strong>Liquidation Tax Rate:</strong> {client.master_accounting.liquidationTaxRate}%<br/>
+                                          <strong>Payment Statuses:</strong> {client.master_accounting.paymentStatuses?.join(', ') || 'None'}<br/>
+                                        </Typography>
+                                      </CardContent>
+                                    </Card>
+                                  )}
+                                </Box>
+                              </Box>
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
+                      </React.Fragment>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            
+            {/* Action Buttons */}
+            <Divider sx={{ my: 3 }} />
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                size="large"
                 onClick={createClientsInDatabase}
                 disabled={creatingInDatabase || clients.length === 0}
-                style={{
-                  minWidth: '250px',
-                  padding: '1rem 2rem',
-                  fontSize: '1.1rem',
+                startIcon={creatingInDatabase ? <LinearProgress sx={{ width: 20, height: 20 }} /> : <CloudUploadIcon />}
+                sx={{
+                  minWidth: 250,
+                  py: 1.5,
+                  fontSize: '1rem',
                   fontWeight: 'bold',
-                  backgroundColor: creatingInDatabase ? '#6c757d' : (clients.length > 0 ? '#007bff' : '#6c757d'),
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: creatingInDatabase || clients.length === 0 ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.3s ease',
-                  boxShadow: !creatingInDatabase && clients.length > 0 ? '0 4px 8px rgba(0, 123, 255, 0.3)' : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
+                  borderRadius: 2
                 }}
               >
-                {creatingInDatabase ? (
-                  <>
-                    <div style={{ 
-                      border: '2px solid #f3f3f3',
-                      borderTop: '2px solid #ffffff',
-                      borderRadius: '50%',
-                      width: '16px',
-                      height: '16px',
-                      animation: 'spin 2s linear infinite'
-                    }}></div>
-                    Creating Clients...
-                  </>
-                ) : (
-                  <>
-                    🏛️ Create {clients.length} Clients in Database
-                  </>
-                )}
-              </button>
+                {creatingInDatabase ? 'Creating Clients...' : `Create ${clients.length} Clients in Database`}
+              </Button>
               
-              <button
+              <Button
+                variant="contained"
+                size="large"
+                color="success"
                 onClick={exportToCSV}
                 disabled={clients.length === 0}
-                style={{
-                  minWidth: '250px',
-                  padding: '1rem 2rem',
-                  fontSize: '1.1rem',
+                startIcon={<DownloadIcon />}
+                sx={{
+                  minWidth: 250,
+                  py: 1.5,
+                  fontSize: '1rem',
                   fontWeight: 'bold',
-                  backgroundColor: clients.length > 0 ? '#28a745' : '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: clients.length === 0 ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.3s ease',
-                  boxShadow: clients.length > 0 ? '0 4px 8px rgba(40, 167, 69, 0.3)' : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
+                  borderRadius: 2
                 }}
               >
-                📄 Export {clients.length} Clients to CSV
-              </button>
-            </div>
+                Export {clients.length} Clients to CSV
+              </Button>
+            </Box>
             
             {clients.length > 0 && (
-              <p style={{ fontSize: '0.9rem', color: '#666' }}>
+              <Alert severity="info" sx={{ mt: 3 }}>
                 Save all {clients.length} clients to Firestore database or export to CSV file
-              </p>
+              </Alert>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
-
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
-    </div>
+    </Container>
   );
 };
 
