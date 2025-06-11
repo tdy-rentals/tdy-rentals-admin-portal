@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "tdy-admin-portal"
+location: "us-central1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "tdy-admin-portal-fdc"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]
