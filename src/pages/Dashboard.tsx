@@ -1,8 +1,54 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import ParsingManager from '../components/ParsingManager';
+
+// Client interface (matching the one from ParsingManager)
+interface Client {
+  isInV2: boolean;
+  isInV3: boolean;
+  isInV4: boolean;
+  isInMasterAccounting: boolean;
+  
+  V2?: any;
+  V3?: any; 
+  V4?: any;
+  master_accounting?: any;
+  
+  clientNumber: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  govEmail?: string;
+  cell?: string;
+  tdyLocation?: string;
+  govAgencyOrDept?: string;
+  tdyType?: string;
+  dealType?: string;
+  contractStatus?: string;
+  hasRoommates?: boolean;
+  totalRoommates?: number;
+  perDiemStartDate?: string;
+  perDiemEndDate?: string;
+  contractStartDate?: string;
+  contractEndDate?: string;
+  maxLodgingAllocation?: number;
+  liquidationTaxRate?: number;
+  referralSource?: string;
+  referralFeeType?: string;
+  salesRep?: string;
+  lodgingTaxExempt?: boolean;
+  lodgingTaxReimbursable?: boolean;
+  taxCalculationMethod?: string;
+  clientWorksheetUrl?: string;
+  numberOfNights?: number;
+  
+  createdAt: string;
+  updatedAt: string;
+}
 
 const Dashboard: React.FC = () => {
   const { currentUser, logout } = useAuth();
+  const [clients, setClients] = useState<Client[]>([]);
 
   const handleLogout = async () => {
     try {
@@ -10,6 +56,11 @@ const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Logout error:', error);
     }
+  };
+
+  const handleClientsUpdated = (updatedClients: Client[]) => {
+    setClients(updatedClients);
+    console.log(`Updated client list: ${updatedClients.length} clients`);
   };
 
   return (
@@ -28,60 +79,30 @@ const Dashboard: React.FC = () => {
             Welcome, {currentUser?.displayName || currentUser?.email}
           </p>
         </div>
-        <button
-          onClick={handleLogout}
-          style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '0.875rem'
-          }}
-        >
-          Logout
-        </button>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ fontSize: '0.9rem', color: '#666' }}>
+            {clients.length > 0 && `${clients.length} clients loaded`}
+          </div>
+          <button
+            onClick={handleLogout}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.875rem'
+            }}
+          >
+            Logout
+          </button>
+        </div>
       </header>
-      
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-        gap: '1.5rem' 
-      }}>
-        <div style={{
-          backgroundColor: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          border: '1px solid #eee'
-        }}>
-          <h3 style={{ margin: '0 0 1rem 0' }}>Active Clients</h3>
-          <p style={{ color: '#666', margin: 0 }}>Client management coming soon...</p>
-        </div>
-        
-        <div style={{
-          backgroundColor: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          border: '1px solid #eee'
-        }}>
-          <h3 style={{ margin: '0 0 1rem 0' }}>Recent Tasks</h3>
-          <p style={{ color: '#666', margin: 0 }}>Task management coming soon...</p>
-        </div>
-        
-        <div style={{
-          backgroundColor: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          border: '1px solid #eee'
-        }}>
-          <h3 style={{ margin: '0 0 1rem 0' }}>Reports</h3>
-          <p style={{ color: '#666', margin: 0 }}>Reporting dashboard coming soon...</p>
-        </div>
-      </div>
+
+      <main>
+        <ParsingManager onClientsUpdated={handleClientsUpdated} />
+      </main>
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login.tsx';
 import Dashboard from './pages/Dashboard.tsx';
+import ClientPage from './pages/ClientPage.tsx';
 
 function App() {
   return (
@@ -15,6 +16,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/client/:clientId" 
+          element={
+            <ProtectedRoute>
+              <ClientPage />
             </ProtectedRoute>
           } 
         />
