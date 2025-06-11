@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 // Import the parsers (we'll need to adapt them for multi-tab parsing)
 // For now, I'll include the parsing logic directly in this component
@@ -66,6 +68,7 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
   const [editingStates, setEditingStates] = useState<EditingState>({});
   const [editedData, setEditedData] = useState<{ [clientNumber: string]: Partial<Client> }>({});
   const [expandedRows, setExpandedRows] = useState<{ [clientNumber: string]: boolean }>({});
+  const [creatingInDatabase, setCreatingInDatabase] = useState(false);
   
   // Track uploaded files
   const [uploadedFiles, setUploadedFiles] = useState({
@@ -552,6 +555,241 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
     }
   };
 
+  // Delete a client from the list
+  const deleteClient = (clientNumber: string) => {
+    if (confirm(`Are you sure you want to delete client #${clientNumber}?`)) {
+      setClients(prev => {
+        const updated = prev.filter(client => client.clientNumber !== clientNumber);
+        onClientsUpdated?.(updated);
+        return updated;
+      });
+      
+      // Clean up any editing states for this client
+      setEditingStates(prev => {
+        const newStates = { ...prev };
+        delete newStates[clientNumber];
+        return newStates;
+      });
+      
+      setEditedData(prev => {
+        const newData = { ...prev };
+        delete newData[clientNumber];
+        return newData;
+      });
+      
+      setExpandedRows(prev => {
+        const newRows = { ...prev };
+        delete newRows[clientNumber];
+        return newRows;
+      });
+    }
+  };
+
+  // Create clients in Firestore database
+  const createClientsInDatabase = async () => {
+    if (clients.length === 0) {
+      alert('No clients to create in database');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to create ${clients.length} clients in the database?`)) {
+      return;
+    }
+
+    setCreatingInDatabase(true);
+    
+    try {
+      const clientsCollection = collection(db, 'clients');
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const client of clients) {
+        try {
+          // Prepare client data for Firestore (remove internal React state fields)
+          const clientData = {
+            // Version tracking flags
+            isInV2: client.isInV2,
+            isInV3: client.isInV3,
+            isInV4: client.isInV4,
+            isInMasterAccounting: client.isInMasterAccounting,
+            
+            // Version-specific data
+            V2: client.V2 || null,
+            V3: client.V3 || null,
+            V4: client.V4 || null,
+            master_accounting: client.master_accounting || null,
+            
+            // Root level fields
+            clientNumber: client.clientNumber,
+            firstName: client.firstName,
+            lastName: client.lastName,
+            email: client.email || null,
+            govEmail: client.govEmail || null,
+            cell: client.cell || null,
+            tdyLocation: client.tdyLocation || null,
+            govAgencyOrDept: client.govAgencyOrDept || null,
+            tdyType: client.tdyType || null,
+            dealType: client.dealType || null,
+            contractStatus: client.contractStatus || null,
+            hasRoommates: client.hasRoommates || false,
+            totalRoommates: client.totalRoommates || 0,
+            perDiemStartDate: client.perDiemStartDate || null,
+            perDiemEndDate: client.perDiemEndDate || null,
+            contractStartDate: client.contractStartDate || null,
+            contractEndDate: client.contractEndDate || null,
+            maxLodgingAllocation: client.maxLodgingAllocation || 0,
+            liquidationTaxRate: client.liquidationTaxRate || 0,
+            referralSource: client.referralSource || null,
+            referralFeeType: client.referralFeeType || null,
+            salesRep: client.salesRep || null,
+            lodgingTaxExempt: client.lodgingTaxExempt || false,
+            lodgingTaxReimbursable: client.lodgingTaxReimbursable || false,
+            taxCalculationMethod: client.taxCalculationMethod || null,
+            clientWorksheetUrl: client.clientWorksheetUrl || null,
+            numberOfNights: client.numberOfNights || 0,
+            
+            // Metadata with server timestamp
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            importedAt: serverTimestamp()
+          };
+
+          // Use client number as document ID for easier lookups
+          await setDoc(doc(clientsCollection, client.clientNumber), clientData);
+          successCount++;
+          
+        } catch (error) {
+          console.error(`Error creating client ${client.clientNumber}:`, error);
+          errorCount++;
+        }
+      }
+
+      // Show results
+      if (errorCount === 0) {
+        alert(`Successfully created ${successCount} clients in the database!`);
+      } else {
+        alert(`Created ${successCount} clients successfully. ${errorCount} failed to create.`);
+      }
+
+    } catch (error) {
+      console.error('Error creating clients in database:', error);
+      alert('An error occurred while creating clients in the database. Please try again.');
+    } finally {
+      setCreatingInDatabase(false);
+    }
+  };
+
+  // Export clients to CSV
+  const exportToCSV = () => {
+    if (clients.length === 0) {
+      alert('No clients to export');
+      return;
+    }
+
+    // Define CSV headers
+    const headers = [
+      'Client Number',
+      'First Name',
+      'Last Name',
+      'Email',
+      'Gov Email',
+      'Cell',
+      'TDY Location',
+      'Gov Agency/Dept',
+      'TDY Type',
+      'Deal Type',
+      'Contract Status',
+      'Has Roommates',
+      'Total Roommates',
+      'Per Diem Start Date',
+      'Per Diem End Date',
+      'Contract Start Date',
+      'Contract End Date',
+      'Max Lodging Allocation',
+      'Liquidation Tax Rate',
+      'Referral Source',
+      'Referral Fee Type',
+      'Sales Rep',
+      'Lodging Tax Exempt',
+      'Lodging Tax Reimbursable',
+      'Tax Calculation Method',
+      'Client Worksheet URL',
+      'Number of Nights',
+      'In V2',
+      'In V3',
+      'In V4',
+      'In Master Accounting',
+      'Created At',
+      'Updated At'
+    ];
+
+    // Convert clients to CSV rows
+    const csvRows = clients.map(client => [
+      client.clientNumber,
+      client.firstName || '',
+      client.lastName || '',
+      client.email || '',
+      client.govEmail || '',
+      client.cell || '',
+      client.tdyLocation || '',
+      client.govAgencyOrDept || '',
+      client.tdyType || '',
+      client.dealType || '',
+      client.contractStatus || '',
+      client.hasRoommates ? 'Yes' : 'No',
+      client.totalRoommates || 0,
+      client.perDiemStartDate ? formatDate(client.perDiemStartDate) : '',
+      client.perDiemEndDate ? formatDate(client.perDiemEndDate) : '',
+      client.contractStartDate ? formatDate(client.contractStartDate) : '',
+      client.contractEndDate ? formatDate(client.contractEndDate) : '',
+      client.maxLodgingAllocation || 0,
+      client.liquidationTaxRate || 0,
+      client.referralSource || '',
+      client.referralFeeType || '',
+      client.salesRep || '',
+      client.lodgingTaxExempt ? 'Yes' : 'No',
+      client.lodgingTaxReimbursable ? 'Yes' : 'No',
+      client.taxCalculationMethod || '',
+      client.clientWorksheetUrl || '',
+      client.numberOfNights || 0,
+      client.isInV2 ? 'Yes' : 'No',
+      client.isInV3 ? 'Yes' : 'No',
+      client.isInV4 ? 'Yes' : 'No',
+      client.isInMasterAccounting ? 'Yes' : 'No',
+      client.createdAt ? formatDate(client.createdAt) : '',
+      client.updatedAt ? formatDate(client.updatedAt) : ''
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...csvRows.map(row => 
+        row.map(cell => {
+          // Escape cells that contain commas, quotes, or newlines
+          const cellStr = String(cell);
+          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+            return `"${cellStr.replace(/"/g, '""')}"`;
+          }
+          return cellStr;
+        }).join(',')
+      )
+    ].join('\n');
+
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `tdy-clients-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   return (
     <div style={{ padding: '1rem' }}>
       <h2>Client Data Management</h2>
@@ -685,7 +923,7 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
                     {/* Main Client Row */}
                     <tr>
                       <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
                           {/* Expand/Collapse Button */}
                           <button
                             onClick={() => toggleExpansion(client.clientNumber)}
@@ -719,12 +957,30 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
                               </button>
                             </>
                           ) : (
-                            <button
-                              onClick={() => startEditing(client.clientNumber)}
-                              style={{ padding: '4px 8px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.8em' }}
-                            >
-                              Edit
-                            </button>
+                            <>
+                              <button
+                                onClick={() => startEditing(client.clientNumber)}
+                                style={{ padding: '4px 8px', backgroundColor: '#2196F3', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.8em' }}
+                              >
+                                Edit
+                              </button>
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => deleteClient(client.clientNumber)}
+                                style={{ 
+                                  padding: '4px 8px', 
+                                  backgroundColor: '#dc3545', 
+                                  color: 'white', 
+                                  border: 'none', 
+                                  borderRadius: '3px', 
+                                  cursor: 'pointer', 
+                                  fontSize: '0.8em'
+                                }}
+                                title={`Delete client #${client.clientNumber}`}
+                              >
+                                🗑️
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -926,6 +1182,81 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
               })}
             </tbody>
           </table>
+          
+          {/* Create Clients in Database Button */}
+          <div style={{ marginTop: '2rem', textAlign: 'center', borderTop: '2px solid #eee', paddingTop: '2rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '1rem' }}>
+              <button
+                onClick={createClientsInDatabase}
+                disabled={creatingInDatabase || clients.length === 0}
+                style={{
+                  minWidth: '250px',
+                  padding: '1rem 2rem',
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  backgroundColor: creatingInDatabase ? '#6c757d' : (clients.length > 0 ? '#007bff' : '#6c757d'),
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: creatingInDatabase || clients.length === 0 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: !creatingInDatabase && clients.length > 0 ? '0 4px 8px rgba(0, 123, 255, 0.3)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {creatingInDatabase ? (
+                  <>
+                    <div style={{ 
+                      border: '2px solid #f3f3f3',
+                      borderTop: '2px solid #ffffff',
+                      borderRadius: '50%',
+                      width: '16px',
+                      height: '16px',
+                      animation: 'spin 2s linear infinite'
+                    }}></div>
+                    Creating Clients...
+                  </>
+                ) : (
+                  <>
+                    🏛️ Create {clients.length} Clients in Database
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={exportToCSV}
+                disabled={clients.length === 0}
+                style={{
+                  minWidth: '250px',
+                  padding: '1rem 2rem',
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  backgroundColor: clients.length > 0 ? '#28a745' : '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: clients.length === 0 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: clients.length > 0 ? '0 4px 8px rgba(40, 167, 69, 0.3)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                📄 Export {clients.length} Clients to CSV
+              </button>
+            </div>
+            
+            {clients.length > 0 && (
+              <p style={{ fontSize: '0.9rem', color: '#666' }}>
+                Save all {clients.length} clients to Firestore database or export to CSV file
+              </p>
+            )}
+          </div>
         </div>
       )}
 
