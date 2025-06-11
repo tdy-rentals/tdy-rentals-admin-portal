@@ -48,6 +48,7 @@ interface Client {
   taxCalculationMethod?: string;
   clientWorksheetUrl?: string;
   numberOfNights?: number;
+  comments?: string;
   
   // Metadata
   createdAt: string;
@@ -259,6 +260,7 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
       taxCalculationMethod: versionData.taxCalculationMethod,
       clientWorksheetUrl: versionData.clientWorksheetUrl,
       numberOfNights: versionData.numberOfNights,
+      comments: '',
       
       createdAt: now,
       updatedAt: now,
@@ -403,6 +405,7 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
           taxCalculationMethod: newClient.taxCalculationMethod || existing.taxCalculationMethod,
           clientWorksheetUrl: newClient.clientWorksheetUrl || existing.clientWorksheetUrl,
           numberOfNights: newClient.numberOfNights || existing.numberOfNights,
+          comments: newClient.comments || existing.comments,
           
           updatedAt: new Date().toISOString(),
         };
@@ -647,6 +650,7 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
             taxCalculationMethod: client.taxCalculationMethod || null,
             clientWorksheetUrl: client.clientWorksheetUrl || null,
             numberOfNights: client.numberOfNights || 0,
+            comments: client.comments || '',
             
             // Metadata with server timestamp
             createdAt: serverTimestamp(),
@@ -715,6 +719,7 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
       'Tax Calculation Method',
       'Client Worksheet URL',
       'Number of Nights',
+      'Comments',
       'In V2',
       'In V3',
       'In V4',
@@ -752,6 +757,7 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
       client.taxCalculationMethod || '',
       client.clientWorksheetUrl || '',
       client.numberOfNights || 0,
+      client.comments || '',
       client.isInV2 ? 'Yes' : 'No',
       client.isInV3 ? 'Yes' : 'No',
       client.isInV4 ? 'Yes' : 'No',
@@ -1097,6 +1103,59 @@ const ParsingManager: React.FC<ParsingManagerProps> = ({ onClientsUpdated }) => 
                             <h4 style={{ margin: '0 0 1rem 0', color: '#495057' }}>
                               Detailed Data for Client #{client.clientNumber}
                             </h4>
+                            
+                            {/* Comments Section */}
+                            <div style={{ marginBottom: '1.5rem', backgroundColor: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                              <h5 style={{ margin: '0 0 0.5rem 0', color: '#6c757d', borderBottom: '2px solid #6c757d', paddingBottom: '0.25rem' }}>
+                                📝 Comments
+                              </h5>
+                              <textarea
+                                value={getDisplayValue(client, 'comments') || ''}
+                                onChange={(e) => updateField(client.clientNumber, 'comments', e.target.value)}
+                                placeholder="Add comments or notes about this client..."
+                                style={{
+                                  width: '100%',
+                                  minHeight: '80px',
+                                  padding: '0.75rem',
+                                  border: '1px solid #ced4da',
+                                  borderRadius: '4px',
+                                  fontSize: '0.9rem',
+                                  fontFamily: 'inherit',
+                                  resize: 'vertical',
+                                  backgroundColor: '#fff'
+                                }}
+                              />
+                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                <button
+                                  onClick={() => saveEditing(client.clientNumber)}
+                                  style={{
+                                    padding: '0.5rem 1rem',
+                                    backgroundColor: '#28a745',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem'
+                                  }}
+                                >
+                                  Save Comments
+                                </button>
+                                <button
+                                  onClick={() => updateField(client.clientNumber, 'comments', '')}
+                                  style={{
+                                    padding: '0.5rem 1rem',
+                                    backgroundColor: '#6c757d',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem'
+                                  }}
+                                >
+                                  Clear
+                                </button>
+                              </div>
+                            </div>
                             
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
                               {/* V2 Data */}
