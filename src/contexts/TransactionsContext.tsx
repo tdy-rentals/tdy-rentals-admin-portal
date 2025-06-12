@@ -11,6 +11,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
+import { logAuditEntry } from '../utils/auditLogHelpers';
 
 export interface Transaction {
   transactionId: string;
@@ -78,6 +79,15 @@ export const TransactionsProvider: React.FC<{ clientId: string; children: React.
       validatedBy: currentUser.uid,
       updatedAt: serverTimestamp()
     });
+
+    // Log audit entry
+    await logAuditEntry(
+      'transaction',
+      transactionId,
+      'transactionStatusUpdated',
+      currentUser.uid,
+      { newStatus }
+    );
   };
 
   const value = {

@@ -1,4 +1,8 @@
-import { ParsedTransaction } from './transactionHelpers';
+import type { ParsedTransaction } from './transactionHelpers';
+import V2Parser from './parsers/V2Parser';
+import V3Parser from './parsers/V3Parser';
+import V4Parser from './parsers/V4Parser';
+import MasterAccountingParser from './parsers/MasterAccountingParser';
 
 // Example ClientData type — match to your parser output
 interface ParsedClientData {
@@ -8,45 +12,57 @@ interface ParsedClientData {
   contactEmail?: string;
 }
 
-// Example function — you can replace with your V2/V3/V4 parser calls
-export const parseAccountingFile = async (
-  file: File
-): Promise<{ clientData: ParsedClientData; transactions: ParsedTransaction[] }> => {
-  console.log('Parsing file:', file.name);
+type FileType = 'V2' | 'V3' | 'V4' | 'MasterAccounting';
 
-  // Example logic — replace this with your actual parser chain:
-  // - detect file type (V2/V3/V4/Master)
-  // - call appropriate parser
-  // - extract clientData + transactions
-
-  // Placeholder example:
-  const clientData: ParsedClientData = {
-    clientId: 'client1',
-    name: 'Acme Corp',
-    address: '123 Main St',
-    contactEmail: 'sales@acme.com'
+interface ParseResult {
+  clientData: {
+    clientId: string;
+    name: string;
+    address?: string;
+    contactEmail?: string;
   };
+  transactions: ParsedTransaction[];
+}
 
-  const transactions: ParsedTransaction[] = [
-    {
-      type: 'incoming',
-      amount: 1000,
-      date: '2025-06-12',
-      description: 'Invoice 123'
-    },
-    {
-      type: 'outgoing',
-      amount: 500,
-      date: '2025-06-10',
-      description: 'Vendor payment',
-      paymentMethod: 'card-1'
-    }
-  ];
+export const parseAccountingFile = async (file: File): Promise<ParseResult> => {
+  // Determine file type from the file name
+  const fileName = file.name.toLowerCase();
+  let fileType: FileType;
 
-  // Replace above with your logic, e.g.:
-  // if (file is V2) → V2Parser.parse(file)
-  // if (file is V3) → V3Parser.parse(file)
-  // etc.
+  if (fileName.includes('v2')) {
+    fileType = 'V2';
+  } else if (fileName.includes('v3')) {
+    fileType = 'V3';
+  } else if (fileName.includes('v4')) {
+    fileType = 'V4';
+  } else if (fileName.includes('master') || fileName.includes('accounting')) {
+    fileType = 'MasterAccounting';
+  } else {
+    throw new Error('Could not determine file type from filename. Please ensure the filename contains V2, V3, V4, or Master/Accounting.');
+  }
 
-  return { clientData, transactions };
+  // Read the file
+  const arrayBuffer = await file.arrayBuffer();
+  const data = new Uint8Array(arrayBuffer);
+
+  // Parse based on file type
+  let result: ParseResult;
+  switch (fileType) {
+    case 'V2':
+      result = await V2Parser.parse(data);
+      break;
+    case 'V3':
+      result = await V3Parser.parse(data);
+      break;
+    case 'V4':
+      result = await V4Parser.parse(data);
+      break;
+    case 'MasterAccounting':
+      result = await MasterAccountingParser.parse(data);
+      break;
+    default:
+      throw new Error('Unsupported file type');
+  }
+
+  return result;
 };

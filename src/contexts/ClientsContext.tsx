@@ -1,17 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import {
-  collection,
-  onSnapshot,
-  addDoc,
-  updateDoc,
-  doc,
-  serverTimestamp,
-  query,
-  where,
-  getDocs
-} from 'firebase/firestore';
-import { useAuth } from './AuthContext';
 
 export interface Client {
   clientId: string;
@@ -19,13 +8,12 @@ export interface Client {
   address?: string;
   contactEmail?: string;
   verifiedFields: string[];
-  createdAt: any;
-  updatedAt: any;
 }
 
 interface ClientsContextType {
   clients: Client[];
-  addClient: (client: Omit<Client, 'createdAt' | 'updatedAt' | 'verifiedFields'>) => Promise<void>;
+  loading: boolean;
+  error: string | null;
   upsertClient: (clientData: Partial<Client> & { clientId: string; name: string }) => Promise<void>;
 }
 
@@ -33,35 +21,31 @@ const ClientsContext = createContext<ClientsContextType | undefined>(undefined);
 
 export const useClients = () => {
   const context = useContext(ClientsContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useClients must be used within a ClientsProvider');
   }
   return context;
 };
 
 export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'clients'), (snapshot) => {
-      const data = snapshot.docs.map(docSnap => ({
-        clientId: docSnap.id,
-        ...docSnap.data()
-      })) as Client[];
-      setClients(data);
-    });
-    return unsubscribe;
-  }, []);
+    const fetchClients = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'clients'));
+        const clientsData = querySnapshot.docs.map(doc => ({
+          clientId: doc.id,
+          ...doc.data()
+        })) as Client[];
+        setClients(clientsData);
+      } catch (err) {
+        console.error('Error fetching clients:', err);
+      }
+    };
 
-  const addClient = async (client: Omit<Client, 'createdAt' | 'updatedAt' | 'verifiedFields'>) => {
-    await addDoc(collection(db, 'clients'), {
-      ...client,
-      verifiedFields: [],
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-  };
+    fetchClients();
+  }, []);
 
   const upsertClient = async (clientData: Partial<Client> & { clientId: string; name: string }) => {
     const clientsQuery = query(
@@ -107,7 +91,8 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const value = {
     clients,
-    addClient,
+    loading: false,
+    error: null,
     upsertClient
   };
 

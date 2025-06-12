@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { Client } from '../contexts/ClientsContext';
+import type { Client } from '../contexts/ClientsContext';
+import { logAuditEntry } from '../utils/auditLogHelpers';
+import { useAuth } from '../contexts/AuthContext';
 
 interface VerifiedFieldsManagerProps {
   client: Client;
@@ -10,6 +12,7 @@ interface VerifiedFieldsManagerProps {
 const POSSIBLE_FIELDS = ['name', 'address', 'contactEmail'];
 
 const VerifiedFieldsManager: React.FC<VerifiedFieldsManagerProps> = ({ client }) => {
+  const { currentUser } = useAuth();
   const [verifiedFields, setVerifiedFields] = useState<string[]>(client.verifiedFields || []);
   const [saving, setSaving] = useState(false);
 
@@ -26,6 +29,16 @@ const VerifiedFieldsManager: React.FC<VerifiedFieldsManagerProps> = ({ client })
       await updateDoc(clientRef, {
         verifiedFields
       });
+
+      // Log audit entry
+      await logAuditEntry(
+        'client',
+        client.clientId,
+        'verifiedFieldsUpdated',
+        currentUser?.uid || 'unknown',
+        { verifiedFields }
+      );
+
       alert('Verified fields updated!');
     } catch (error) {
       console.error('Error updating verified fields:', error);

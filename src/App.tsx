@@ -23,7 +23,7 @@ function App() {
           path="/client/:clientId" 
           element={
             <ProtectedRoute>
-              <ClientPage />
+              <Client />
             </ProtectedRoute>
           } 
         />

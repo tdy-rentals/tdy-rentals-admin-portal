@@ -3,13 +3,12 @@ import { useParams } from 'react-router-dom';
 import { TransactionsProvider, useTransactions } from '../contexts/TransactionsContext';
 import AddTransactionModal from '../components/AddTransactionModal';
 import PaymentTimeline from '../components/PaymentTimeline';
-import { useAuth } from '../contexts/AuthContext';
 import { useClients } from '../contexts/ClientsContext';
 import VerifiedFieldsManager from '../components/VerifiedFieldsManager';
+import FooterWithNoteButton from '../components/FooterWithNoteButton';
 
 const ClientPageContent: React.FC<{ clientId: string }> = ({ clientId }) => {
   const { transactions, updateTransactionStatus } = useTransactions();
-  const { currentUser } = useAuth();
   const { clients } = useClients();
   const client = clients.find((c) => c.clientId === clientId);
 
@@ -101,7 +100,7 @@ const ClientPageContent: React.FC<{ clientId: string }> = ({ clientId }) => {
       </table>
 
       <h3>Payment Timeline (validated only)</h3>
-      <PaymentTimeline transactions={transactions.filter((t) => t.status === 'validated')} />
+      <PaymentTimeline clients={[{ clientNumber: clientId, firstName: client?.name || '', lastName: '' }]} />
 
       <AddTransactionModal clientId={clientId} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
@@ -116,6 +115,7 @@ const Client: React.FC = () => {
   return (
     <TransactionsProvider clientId={clientId}>
       <ClientPageContent clientId={clientId} />
+      <FooterWithNoteButton />
     </TransactionsProvider>
   );
 };
