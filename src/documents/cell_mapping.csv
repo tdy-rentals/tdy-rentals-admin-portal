@@ -1,0 +1,65 @@
+Schema Field,UI Label,V2,V3,V4
+last_name,Last Name,M7,M7,M7
+first_name,First Name,N7,N7,N7
+tdy_location,TDY Location,O7,O7,O7
+contract_start,Contract Start Date,P7,P7,P7
+contract_end,Contract End Date,Q7,Q7,Q7
+agency_department,Government Agency/Department,R7,R7,R7
+cell,Cell,S7,S7,S7
+email,Email,T7,T7,T7
+gov_email,Government Email,U7,U7,U7
+contract_value,Contract Value,A15,A15,A15
+orders_start,Orders Start Date,I19,N18,N18
+orders_end,Orders End Date,J19,O18,O18
+traveler_start,Travel Start Date,I20,N19,N19
+traveler_end,Travel End Date,J20,O19,O19
+efm_1_start,EFM #1 Start Date,I22,N21,N21
+efm_1_end,EFM #1 End Date,J22,O21,O21
+efm_1_age,EFM #1 Age,K22,P21,P21
+efm_2_start,EFM #2 Start Date,I23,N22,N22
+efm_2_end,EFM #2 End Date,J23,O22,O22
+efm_2_age,EFM #2 Age,K23,P22,P22
+efm_3_start,EFM #3 Start Date,I24,N23,N23
+efm_3_end,EFM #3 End Date,J24,O23,O23
+efm_3_age,EFM #3 Age,K24,P23,P23
+efm_4_start,EFM #4 Start Date,I25,N24,N24
+efm_4_end,EFM #4 End Date,J25,O24,O24
+efm_4_age,EFM #4 Age,K25,P24,P24
+efm_5_start,EFM #5 Start Date,I26,N25,N25
+efm_5_end,EFM #5 End Date,J26,O25,O25
+efm_5_age,EFM #5 Age,K26,P25,P25
+efm_6_start,EFM #6 Start Date,I27,N26,N26
+efm_6_end,EFM #6 End Date,J27,O26,O26
+efm_6_age,EFM #6 Age,K27,P26,P26
+tdy_type,TDY Type,B8,B8,B8
+deal_type,Deal Type,C8,C8,C8
+client_ws_url,Client Worksheet URL,D8,D8,D8
+contract_status,Contract Status,E8,E8,E8
+roomates,Roommates,F8,F8,F8
+avg_monthly_per_diem,Average Monthly Per Diem,D75,D101,D101
+lowest_nightly_rate,Lowest Nightly Rate,D76,D102,D102
+total_rental_bill_w_tax,Total Rental Bill with Tax,H75,H101,H101
+total_furniture_rental_bill,Total Furniture Rental Bull,H77,H103,H103
+furniture_spend_amount,Furniture Spend Amount,H79,H105,H105
+liquidation_price,Liquidation Price,H81,H107,H107
+billing_address,Billing Address,H15,L199,L199
+billing_city,Billing City,I15,M199,M199
+billing_state,Billing State,J15,N199,N199
+billing_zip,Billing ZIP,K15,O199,O199
+total_lodging_allocation,Total Lodging Allocation,,AD32,AD32
+transaction_fees,Transaction Fees,,AD33,AD33
+net,NET,,AD34,AD34
+min_per_diem_night,Min Per Diem Night,,AD35,AD35
+max_nightly_lodging_spend,Max Nightly Lodging Spend,,AD36,AD36
+min_required_furnishings_spend,Min Required Furnishings Spend,,AD37,AD37
+total_furniture_spend,Total Furniture Spend,,AD54,AD54
+logistics_cost,Logistics Cost,,AD55,AD55
+furnishing_transaction_fees,Furnishings Transaction Fees,,AD56,AD56
+gross_profit,Gross Profit,,AD57,AD57
+gross_profit_percentage,Gross Profit Percentage,,AD58,AD58
+num_nights,Number of Nights,,AD43,AD43
+first_billing_day,First Billing Day,E270,E270,E270
+last_billing_day,Last Billing Day,E272,E272,E272
+property_name,Property Name,,AD60,AD60
+property_url,Property Link,,AD61,AD61
+sales_rep,Sales Representative,,C6,C6
